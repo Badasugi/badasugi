@@ -8,20 +8,20 @@
   --color-logo-stroke: #382731;
   --color-text-stroke: #f6f6f6;
   --color-mid-gray: #808080;
+  /* 받아쓰기 theme colors */
+  --color-yellow-pad: #fff9c4;
+  --color-blue-line: #a3c2c2;
+  --color-red-margin: #ffb3b3;
+  --color-wood-dark: #654321;
+  --color-wood-light: #8b4513;
 }
 
 :root {
-  /* Typography */
+  /* Typography - Poor Story font for 받아쓰기 */
+  font-family: "Poor Story", cursive, system-ui, -apple-system, sans-serif;
   font-size: 15px;
   line-height: 24px;
   font-weight: 400;
-
-  /* Colors - Light Theme */
-  /* --color-text: #0f0f0f;
-  --color-background: #fbfbfb;
-  --color-logo-primary: #FAA2CA;
-  --color-logo-stroke: #382731;
-  --color-text-stroke: #f6f6f6; */
 
   /* Typography settings */
   font-synthesis: none;

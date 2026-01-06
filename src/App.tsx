@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import "./App.css";
+import Onboarding from "./components/onboarding";
+import { BadasseugiApp } from "./components/badasseugi";
+import { Sidebar, SidebarSection, SECTIONS_CONFIG } from "./components/Sidebar";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import Footer from "./components/footer";
-import Onboarding from "./components/onboarding";
-import { Sidebar, SidebarSection, SECTIONS_CONFIG } from "./components/Sidebar";
-import { useSettings } from "./hooks/useSettings";
 import { commands } from "@/bindings";
+
+type AppView = "badasseugi" | "settings";
 
 const renderSettingsContent = (section: SidebarSection) => {
   const ActiveComponent =
@@ -16,42 +18,29 @@ const renderSettingsContent = (section: SidebarSection) => {
 
 function App() {
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
-  const [currentSection, setCurrentSection] =
-    useState<SidebarSection>("general");
-  const { settings, updateSetting } = useSettings();
+  const [currentView, setCurrentView] = useState<AppView>("badasseugi");
+  const [currentSection, setCurrentSection] = useState<SidebarSection>("general");
 
   useEffect(() => {
     checkOnboardingStatus();
   }, []);
 
-  // Handle keyboard shortcuts for debug mode toggle
+  // ESC 키로 설정에서 받아쓰기로 복귀
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Check for Ctrl+Shift+D (Windows/Linux) or Cmd+Shift+D (macOS)
-      const isDebugShortcut =
-        event.shiftKey &&
-        event.key.toLowerCase() === "d" &&
-        (event.ctrlKey || event.metaKey);
-
-      if (isDebugShortcut) {
-        event.preventDefault();
-        const currentDebugMode = settings?.debug_mode ?? false;
-        updateSetting("debug_mode", !currentDebugMode);
+      if (event.key === "Escape" && currentView === "settings") {
+        setCurrentView("badasseugi");
       }
     };
 
-    // Add event listener when component mounts
     document.addEventListener("keydown", handleKeyDown);
-
-    // Cleanup event listener when component unmounts
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [settings?.debug_mode, updateSetting]);
+  }, [currentView]);
 
   const checkOnboardingStatus = async () => {
     try {
-      // Always check if they have any models available
       const result = await commands.hasAnyModelsAvailable();
       if (result.status === "ok") {
         setShowOnboarding(!result.data);
@@ -65,24 +54,51 @@ function App() {
   };
 
   const handleModelSelected = () => {
-    // Transition to main app - user has started a download
     setShowOnboarding(false);
   };
 
+  const handleSettingsClick = () => {
+    setCurrentView("settings");
+  };
+
+  const handleBackToBadasseugi = () => {
+    setCurrentView("badasseugi");
+  };
+
+  // 온보딩 화면
   if (showOnboarding) {
     return <Onboarding onModelSelected={handleModelSelected} />;
   }
 
+  // 받아쓰기 메인 화면
+  if (currentView === "badasseugi") {
+    console.log("📝 Rendering BadasseugiApp view");
+    return (
+      <div style={{ width: "100vw", height: "100vh", position: "fixed", top: 0, left: 0 }}>
+        <Toaster />
+        <BadasseugiApp onSettingsClick={handleSettingsClick} />
+      </div>
+    );
+  }
+
+  // 설정 화면 (기존 Handy UI)
   return (
     <div className="h-screen flex flex-col">
       <Toaster />
-      {/* Main content area that takes remaining space */}
+      {/* 받아쓰기로 돌아가기 버튼 */}
+      <button
+        onClick={handleBackToBadasseugi}
+        style={{ fontFamily: "'Poor Story', cursive" }}
+        className="fixed top-4 left-4 z-50 flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md hover:bg-white transition-colors"
+      >
+        <span>←</span>
+        <span>받아쓰기로 돌아가기</span>
+      </button>
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
           activeSection={currentSection}
           onSectionChange={setCurrentSection}
         />
-        {/* Scrollable content area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto">
             <div className="flex flex-col items-center p-4 gap-4">
@@ -92,7 +108,6 @@ function App() {
           </div>
         </div>
       </div>
-      {/* Fixed footer at bottom */}
       <Footer />
     </div>
   );
