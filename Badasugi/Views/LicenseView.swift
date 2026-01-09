@@ -39,9 +39,19 @@ struct LicenseView: View {
             }
             
             if let message = licenseViewModel.validationMessage {
-                Text(message)
-                    .foregroundColor(licenseViewModel.licenseState == .licensed ? .green : .red)
-                    .font(.caption)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(message)
+                        .foregroundColor(licenseViewModel.licenseState == .licensed ? .green : .red)
+                        .font(.caption)
+                    
+                    // Show device usage info if available
+                    if licenseViewModel.licenseState == .licensed,
+                       licenseViewModel.maxDevices > 0 {
+                        Text("기기 사용: \(licenseViewModel.activeDevices) / \(licenseViewModel.maxDevices)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
         }
         .padding()

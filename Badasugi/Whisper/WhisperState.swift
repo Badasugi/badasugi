@@ -56,6 +56,9 @@ class WhisperState: NSObject, ObservableObject {
     @Published var miniRecorderError: String?
     @Published var shouldCancelRecording = false
     
+    // Onboarding mode flag to prevent auto-pasting during tutorial
+    @Published var isOnboardingMode = false
+    
     // Prevent duplicate toggleMiniRecorder calls
     var isToggleMiniRecorderProcessing = false
     var lastToggleMiniRecorderTime: Date?
@@ -110,7 +113,7 @@ class WhisperState: NSObject, ObservableObject {
     let recordingsDirectory: URL
     let enhancementService: AIEnhancementService?
     var licenseViewModel: LicenseViewModel
-    let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "WhisperState")
+    let logger = Logger(subsystem: "com.badasugi.app", category: "WhisperState")
     var miniWindowManager: MiniWindowManager?
     
     // For model progress tracking
@@ -381,6 +384,14 @@ class WhisperState: NSObject, ObservableObject {
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
+            if UserDefaults.standard.object(forKey: "IsAutoPunctuationEnabled") as? Bool ?? false {
+                let punctuated = AutoPunctuationService.apply(to: text)
+                if punctuated != text {
+                    text = punctuated
+                    logger.notice("📝 Auto punctuated transcript: \(text, privacy: .public)")
+                }
+            }
+
             if UserDefaults.standard.object(forKey: "IsTextFormattingEnabled") as? Bool ?? true {
                 text = WhisperTextFormatter.format(text)
                 logger.notice("📝 Formatted transcript: \(text, privacy: .public)")
@@ -474,16 +485,21 @@ class WhisperState: NSObject, ObservableObject {
 
         if await checkCancellationAndCleanup() { return }
 
-        if var textToPaste = finalPastedText, transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
+        // Skip auto-pasting during onboarding to prevent duplicate text input
+        if var textToPaste = finalPastedText, transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue, !isOnboardingMode {
             if case .trialExpired = licenseViewModel.licenseState {
                 textToPaste = """
-                    체험 기간이 만료되었습니다. 받아쓰기 Pro로 업그레이드하세요: tryvoiceink.com/buy
+                    체험 기간이 만료되었습니다. 받아쓰기 웹사이트를 방문하세요: www.badasugi.com
                     \n\(textToPaste)
                     """
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                let pasteSuccess = CursorPaster.pasteAtCursor(textToPaste + " ")
+                let shouldAppendTrailingSpace = UserDefaults.standard.object(forKey: "AppendTrailingSpace") as? Bool ?? true
+                let pasteText = shouldAppendTrailingSpace
+                    ? (textToPaste.hasSuffix(" ") ? textToPaste : textToPaste + " ")
+                    : textToPaste
+                let pasteSuccess = CursorPaster.pasteAtCursor(pasteText)
                 
                 if !pasteSuccess {
                     NotificationManager.shared.showNotification(

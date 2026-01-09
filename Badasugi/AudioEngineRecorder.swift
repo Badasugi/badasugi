@@ -5,7 +5,7 @@ import os
 
 @MainActor
 class AudioEngineRecorder: ObservableObject {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "AudioEngineRecorder")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "AudioEngineRecorder")
 
     private var audioEngine: AVAudioEngine?
     private var inputNode: AVAudioInputNode?
@@ -16,6 +16,7 @@ class AudioEngineRecorder: ObservableObject {
 
     private var isRecording = false
     private var recordingURL: URL?
+    private var isStopping = false  // Guard against concurrent stop operations
 
     @Published var currentAveragePower: Float = -160.0
     @Published var currentPeakPower: Float = -160.0
@@ -23,8 +24,9 @@ class AudioEngineRecorder: ObservableObject {
     private let tapBufferSize: AVAudioFrameCount = 4096
     private let tapBusNumber: AVAudioNodeBus = 0
 
-    private let audioProcessingQueue = DispatchQueue(label: "com.prakashjoshipax.badasugi.audioProcessing", qos: .userInitiated)
+    private let audioProcessingQueue = DispatchQueue(label: "com.badasugi.app.audioProcessing", qos: .userInitiated)
     private let fileWriteLock = NSLock()
+    private let engineLock = NSLock()  // Lock for audio engine operations
 
     var onRecordingError: ((Error) -> Void)?
 
@@ -32,8 +34,14 @@ class AudioEngineRecorder: ObservableObject {
     private var hasReceivedValidBuffer = false
 
     func startRecording(toOutputFile url: URL, retryCount: Int = 0) throws {
-        stopRecording()
+        // Ensure clean state before starting
+        engineLock.lock()
+        defer { engineLock.unlock() }
+        
+        // Stop any existing recording first
+        stopRecordingInternal()
         hasReceivedValidBuffer = false
+        isStopping = false
 
         let engine = AVAudioEngine()
         audioEngine = engine
@@ -88,10 +96,14 @@ class AudioEngineRecorder: ObservableObject {
         converter = audioConverter
         fileWriteLock.unlock()
 
+        // Install tap with safety checks
         input.installTap(onBus: tapBusNumber, bufferSize: tapBufferSize, format: inputFormat) { [weak self] (buffer, time) in
             guard let self = self else { return }
+            // Skip processing if we're stopping
+            guard !self.isStopping else { return }
 
-            self.audioProcessingQueue.async {
+            self.audioProcessingQueue.async { [weak self] in
+                guard let self = self, !self.isStopping else { return }
                 self.processAudioBuffer(buffer)
             }
         }
@@ -102,9 +114,12 @@ class AudioEngineRecorder: ObservableObject {
             try engine.start()
             isRecording = true
             startValidationTimer(url: url, retryCount: retryCount)
+            logger.info("Audio engine started successfully")
         } catch {
             logger.error("Failed to start audio engine: \(error.localizedDescription)")
             input.removeTap(onBus: tapBusNumber)
+            audioEngine = nil
+            inputNode = nil
             throw AudioEngineRecorderError.failedToStartEngine(error)
         }
     }
@@ -140,13 +155,31 @@ class AudioEngineRecorder: ObservableObject {
     }
 
     func stopRecording() {
+        engineLock.lock()
+        defer { engineLock.unlock() }
+        stopRecordingInternal()
+    }
+    
+    /// Internal stop method - must be called with engineLock held
+    private func stopRecordingInternal() {
         guard isRecording else { return }
+        
+        // Set stopping flag to prevent new buffer processing
+        isStopping = true
 
         validationTimer?.invalidate()
         validationTimer = nil
 
-        inputNode?.removeTap(onBus: tapBusNumber)
-        audioEngine?.stop()
+        // Safely remove tap and stop engine
+        if let input = inputNode {
+            input.removeTap(onBus: tapBusNumber)
+        }
+        
+        if let engine = audioEngine, engine.isRunning {
+            engine.stop()
+        }
+        
+        // Wait for any pending audio processing to complete
         audioProcessingQueue.sync { }
 
         fileWriteLock.lock()
@@ -160,9 +193,12 @@ class AudioEngineRecorder: ObservableObject {
         recordingURL = nil
         isRecording = false
         hasReceivedValidBuffer = false
+        isStopping = false
 
         currentAveragePower = 0.0
         currentPeakPower = 0.0
+        
+        logger.info("Audio engine stopped successfully")
     }
 
     nonisolated private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {

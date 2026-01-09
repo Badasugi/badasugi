@@ -41,7 +41,8 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.selectedAIProvider = selectedAIProvider ?? UserDefaults.standard.string(forKey: "selectedAIProvider")
         self.selectedAIModel = selectedAIModel
         self.selectedTranscriptionModelName = selectedTranscriptionModelName ?? UserDefaults.standard.string(forKey: "CurrentTranscriptionModel")
-        self.selectedLanguage = selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
+        // 언어를 항상 한국어로 고정
+        self.selectedLanguage = "ko"
         self.isEnabled = isEnabled
         self.isDefault = isDefault
         self.hotkeyShortcut = hotkeyShortcut

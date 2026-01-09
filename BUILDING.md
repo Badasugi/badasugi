@@ -1,6 +1,12 @@
-# Building Badasugi
+# Building Badasugi (받아쓰기)
 
-This guide provides detailed instructions for building Badasugi from source.
+This guide provides detailed instructions for building Badasugi (받아쓰기) from source.
+
+**Badasugi (받아쓰기)** is a Korean speech-to-text application for macOS, designed to convert speech to text with support for multiple transcription models and AI-powered text enhancement.
+
+## License
+
+This software is based on VoiceInk and licensed under the GNU General Public License v3 (GPL v3). See the LICENSE file for the full license text.
 
 ## Prerequisites
 
@@ -18,8 +24,8 @@ The easiest way to build Badasugi is using the included Makefile, which automate
 
 ```bash
 # Clone the repository
-git clone https://github.com/Beingpax/Badasugi.git
-cd Badasugi
+git clone https://github.com/Badasugi/badasugi.git
+cd badasugi
 
 # Build everything (recommended for first-time setup)
 make all
@@ -71,8 +77,8 @@ This will create the XCFramework at `build-apple/whisper.xcframework`.
 
 1. Clone the Badasugi repository:
 ```bash
-git clone https://github.com/Beingpax/Badasugi.git
-cd Badasugi
+git clone https://github.com/Badasugi/badasugi.git
+cd badasugi
 ```
 
 2. Add the whisper.xcframework to your project:
@@ -111,4 +117,15 @@ If you encounter any build issues:
 4. Verify all dependencies are properly installed
 5. Make sure whisper.xcframework is properly built and linked
 
-For more help, please check the [issues](https://github.com/Beingpax/Badasugi/issues) section or create a new issue. 
+For more help, please check the [issues](https://github.com/Badasugi/badasugi/issues) section or create a new issue.
+
+## Support
+
+- **Website**: [https://www.badasugi.com](https://www.badasugi.com)
+- **Email**: badasugi.app@gmail.com
+- **GitHub**: [https://github.com/Badasugi/badasugi](https://github.com/Badasugi/badasugi)
+
+---
+
+© 2026 Badasugi (받아쓰기)
+

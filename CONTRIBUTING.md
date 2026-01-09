@@ -1,6 +1,6 @@
-# Contributing to Badasugi
+# Contributing to Badasugi (받아쓰기)
 
-First off, thank you for considering contributing to Badasugi! It's people like you that make Badasugi such a great tool.
+First off, thank you for considering contributing to Badasugi (받아쓰기)! It's people like you that make Badasugi such a great tool.
 
 ## ⚠️ Pull Requests Not Accepted
 
@@ -14,38 +14,9 @@ First off, thank you for considering contributing to Badasugi! It's people like 
 
 Thank you for understanding!
 
----
+## License
 
-## ~~Important Notice About Pull Requests~~
-
-~~We welcome forks and improvements to Badasugi! However, please note:~~
-
-~~1. **The acceptance of Pull Requests is solely at the discretion of the project maintainers**~~
-~~2. **Before making significant changes or starting work on major features:**~~
-   ~~- Open an issue to discuss your proposed changes~~
-   ~~- Wait for maintainer feedback and approval~~
-   ~~- This helps ensure your time and effort align with the project's direction~~
-~~3. **For fundamental or architectural changes:**~~
-   ~~- Direct consultation with the maintainers is required~~
-   ~~- These discussions should happen before you start the implementation~~
-
-~~This policy helps ensure:~~
-~~- Your valuable time is spent on changes that align with the project's vision~~
-~~- The codebase maintains its consistency and quality~~
-~~- We can provide proper guidance and support for your contribution~~
-
-## ~~Important Notice~~
-
-~~Before starting work on any new feature or fix, please reach out to us first by opening an issue or discussion. This is crucial because:~~
-
-~~1. We want to ensure your contribution aligns with the project's goals and vision~~
-~~2. Someone else might already be working on something similar~~
-~~3. We might have valuable insights or requirements that could save you time~~
-~~4. Your proposed changes might need some adjustments to fit with our roadmap~~
-
-## Code of Conduct
-
-By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
+This software is based on VoiceInk and licensed under the GNU General Public License v3 (GPL v3). By contributing to this project, you agree that your contributions will be licensed under the same GPL v3 license.
 
 ## How Can I Contribute?
 
@@ -62,16 +33,6 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 - Clearly describe the feature and its benefits
 - Discuss potential implementation approaches
 - Consider the feature's impact on existing functionality
-
-### ~~Pull Requests~~
-
-~~1. Fork the repository~~
-~~2. Create a new branch (`git checkout -b feature/amazing-feature`)~~
-~~3. Make your changes~~
-~~4. Run tests and ensure they pass~~
-~~5. Commit your changes (`git commit -m 'Add some amazing feature'`)~~
-~~6. Push to the branch (`git push origin feature/amazing-feature`)~~
-~~7. Open a Pull Request~~
 
 ### Development Process
 
@@ -90,7 +51,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 3. Testing:
    - Run existing tests
    - Add new tests for new functionality
-   - Ensure all tests pass before submitting PR
+   - Ensure all tests pass before making changes
 
 ## Style Guidelines
 
@@ -110,8 +71,19 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 ## Questions?
 
 If you have any questions or need clarification, feel free to:
-1. Open an issue
-2. Start a discussion
-3. Reach out to the maintainers
+1. Open an issue on [GitHub](https://github.com/Badasugi/badasugi/issues)
+2. Visit our [website](https://www.badasugi.com)
+3. Contact us via email: badasugi.app@gmail.com
 
-Thank you for contributing to Badasugi! 🎉 
+## Support
+
+- **Website**: [https://www.badasugi.com](https://www.badasugi.com)
+- **Email**: badasugi.app@gmail.com
+- **GitHub**: [https://github.com/Badasugi/badasugi](https://github.com/Badasugi/badasugi)
+
+Thank you for contributing to Badasugi (받아쓰기)! 🎉
+
+---
+
+© 2026 Badasugi (받아쓰기)
+

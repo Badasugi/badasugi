@@ -33,40 +33,37 @@ struct OnboardingPermissionsView: View {
     @Binding var hasCompletedOnboarding: Bool
     @EnvironmentObject private var hotkeyManager: HotkeyManager
     @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
-    @State private var currentPermissionIndex = 0
     @State private var permissionStates: [Bool] = [false, false, false, false, false]
-    @State private var showAnimation = false
-    @State private var scale: CGFloat = 0.8
-    @State private var opacity: CGFloat = 0
     @State private var showModelDownload = false
+    @State private var permissionCheckTimer: Timer?
     
     private let permissions: [OnboardingPermission] = [
         OnboardingPermission(
-            title: "Microphone Access",
-            description: "Enable your microphone to start speaking and converting your voice to text instantly.",
+            title: "마이크 권한",
+            description: "마이크 권한을 허용하여 음성을 텍스트로 즉시 변환할 수 있습니다.",
             icon: "waveform",
             type: .microphone
         ),
         OnboardingPermission(
-            title: "Microphone Selection",
+            title: "마이크 선택",
             description: "받아쓰기에서 사용할 오디오 입력 장치를 선택하세요.",
             icon: "headphones",
             type: .audioDeviceSelection
         ),
         OnboardingPermission(
-            title: "Accessibility Access",
+            title: "접근성 권한",
             description: "받아쓰기가 Mac 어디서나 입력을 도울 수 있도록 허용하세요.",
             icon: "accessibility",
             type: .accessibility
         ),
         OnboardingPermission(
-            title: "Screen Recording",
-            description: "This helps to improve the accuracy of transcription.",
+            title: "화면 녹화 권한",
+            description: "화면의 텍스트를 분석하여 음성 인식 정확도를 향상시킵니다.",
             icon: "rectangle.inset.filled.and.person.filled",
             type: .screenRecording
         ),
         OnboardingPermission(
-            title: "Keyboard Shortcut",
+            title: "키보드 단축키",
             description: "어디서나 받아쓰기에 빠르게 접근할 수 있도록 키보드 단축키를 설정하세요.",
             icon: "keyboard",
             type: .keyboardShortcut
@@ -80,165 +77,54 @@ struct OnboardingPermissionsView: View {
                     // Reusable background
                     OnboardingBackgroundView()
                     
-                    VStack(spacing: 40) {
-                        // Progress indicator
-                        HStack(spacing: 8) {
-                            ForEach(0..<permissions.count, id: \.self) { index in
-                                Circle()
-                                    .fill(index <= currentPermissionIndex ? Color.accentColor : Color.white.opacity(0.1))
-                                    .frame(width: 8, height: 8)
-                                    .scaleEffect(index == currentPermissionIndex ? 1.2 : 1.0)
-                                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentPermissionIndex)
-                            }
-                        }
-                        .padding(.top, 40)
+                    VStack(spacing: 0) {
+                        Spacer()
                         
-                        // Current permission card
-                        VStack(spacing: 30) {
-                            // Permission icon
-                            ZStack {
-                                Circle()
-                                    .fill(Color.accentColor.opacity(0.1))
-                                    .frame(width: 100, height: 100)
+                        VStack(spacing: 16) {
+                            // Title
+                            VStack(spacing: 8) {
+                                Text("권한 설정")
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
                                 
-                                if permissionStates[currentPermissionIndex] {
-                                    Image(systemName: "checkmark.seal.fill")
-                                        .font(.system(size: 50))
-                                        .foregroundColor(.accentColor)
-                                        .transition(.scale.combined(with: .opacity))
-                                } else {
-                                    Image(systemName: permissions[currentPermissionIndex].icon)
-                                        .font(.system(size: 40))
-                                        .foregroundColor(.accentColor)
-                                }
-                            }
-                            .scaleEffect(scale)
-                            .opacity(opacity)
-                            
-                            // Permission text
-                            VStack(spacing: 12) {
-                                HStack(spacing: 8) {
-                                    Text(permissions[currentPermissionIndex].title)
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                    
-                                    if permissions[currentPermissionIndex].type == .screenRecording {
-                                        InfoTip(
-                                            title: "Screen Recording Access",
-                                            message: "받아쓰기는 화면의 텍스트를 캡처하여 음성 입력의 컨텍스트를 이해하며, 이를 통해 기록 정확도가 크게 향상됩니다. 개인정보 보호가 중요합니다: 이 데이터는 로컬에서 처리되며 저장되지 않습니다.",
-                                            learnMoreURL: "https://tryvoiceink.com/docs/contextual-awareness"
-                                        )
-                                    }
-                                }
-                                
-                                Text(permissions[currentPermissionIndex].description)
-                                    .font(.body)
+                                Text("받아쓰기를 사용하기 위해 필요한 권한을 설정해주세요")
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.white.opacity(0.7))
                                     .multilineTextAlignment(.center)
-                                    .padding(.horizontal)
                             }
-                            .scaleEffect(scale)
-                            .opacity(opacity)
+                            .padding(.bottom, 12)
                             
-                            // Audio device selection (only shown for audio device selection step)
-                            if permissions[currentPermissionIndex].type == .audioDeviceSelection {
-                                VStack(spacing: 20) {
-                                    if audioDeviceManager.availableDevices.isEmpty {
-                                        VStack(spacing: 12) {
-                                            Image(systemName: "mic.slash.circle.fill")
-                                                .font(.system(size: 36))
-                                                .symbolRenderingMode(.hierarchical)
-                                                .foregroundStyle(.secondary)
-                                            
-                                            Text("No microphones found")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        .padding()
-                                    } else {
-                                        styledPicker(
-                                            label: "Microphone:",
-                                            selectedValue: audioDeviceManager.selectedDeviceID ?? 0,
-                                            displayValue: audioDeviceManager.availableDevices.first { $0.id == audioDeviceManager.selectedDeviceID }?.name ?? "Select Device",
-                                            options: audioDeviceManager.availableDevices.map { $0.id },
-                                            optionDisplayName: { deviceId in
-                                                audioDeviceManager.availableDevices.first { $0.id == deviceId }?.name ?? "Unknown Device"
-                                            },
-                                            onSelection: { deviceId in
-                                                audioDeviceManager.selectDevice(id: deviceId)
-                                                audioDeviceManager.selectInputMode(.custom)
-                                                withAnimation {
-                                                    permissionStates[currentPermissionIndex] = true
-                                                    showAnimation = true
-                                                }
-                                            }
-                                        )
-                                        .onAppear {
-                                            if !audioDeviceManager.availableDevices.isEmpty {
-                                                if let deviceID = audioDeviceManager.findBestAvailableDevice() {
-                                                    audioDeviceManager.selectDevice(id: deviceID)
-                                                    audioDeviceManager.selectInputMode(.custom)
-                                                    withAnimation {
-                                                        permissionStates[currentPermissionIndex] = true
-                                                        showAnimation = true
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                    Text("For best results, using your Mac's built-in microphone is recommended.")
-                                        .font(.caption)
-                                        .foregroundColor(.white.opacity(0.7))
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal)
+                            // All permissions list
+                            VStack(spacing: 10) {
+                                ForEach(Array(permissions.enumerated()), id: \.element.id) { index, permission in
+                                    permissionCard(
+                                        permission: permission,
+                                        index: index,
+                                        isGranted: permissionStates[index]
+                                    )
                                 }
-                                .scaleEffect(scale)
-                                .opacity(opacity)
                             }
+                            .padding(.horizontal, 40)
                             
-                            // Keyboard shortcut recorder (only shown for keyboard shortcut step)
-                            if permissions[currentPermissionIndex].type == .keyboardShortcut {
-                                hotkeyView(
-                                    binding: $hotkeyManager.selectedHotkey1,
-                                    shortcutName: .toggleMiniRecorder
-                                ) { isConfigured in
-                                    withAnimation {
-                                        permissionStates[currentPermissionIndex] = isConfigured
-                                        showAnimation = isConfigured
-                                    }
+                            // Continue button
+                            Button(action: {
+                                withAnimation {
+                                    showModelDownload = true
                                 }
-                                .scaleEffect(scale)
-                                .opacity(opacity)
-                            }
-                        }
-                        .frame(maxWidth: 400)
-                        .padding(.vertical, 40)
-                        
-                        // Action buttons
-                        VStack(spacing: 16) {
-                            Button(action: requestPermission) {
-                                Text(getButtonTitle())
+                            }) {
+                                Text("계속하기")
                                     .font(.headline)
                                     .foregroundColor(.white)
-                                    .frame(width: 200, height: 50)
+                                    .frame(width: 200, height: 44)
                                     .background(Color.accentColor)
-                                    .cornerRadius(25)
+                                    .cornerRadius(22)
                             }
                             .buttonStyle(ScaleButtonStyle())
-                            
-                            if !permissionStates[currentPermissionIndex] && 
-                               permissions[currentPermissionIndex].type != .keyboardShortcut &&
-                               permissions[currentPermissionIndex].type != .audioDeviceSelection {
-                                SkipButton(text: "Skip for now") {
-                                    moveToNext()
-                                }
-                            }
+                            .padding(.top, 12)
                         }
-                        .opacity(opacity)
+                        
+                        Spacer()
                     }
-                    .padding()
                 }
             }
             
@@ -249,23 +135,220 @@ struct OnboardingPermissionsView: View {
         }
         .onAppear {
             checkExistingPermissions()
-            animateIn()
             // Ensure audio devices are loaded
             audioDeviceManager.loadAvailableDevices()
+            
+            // 주기적으로 권한 상태 확인 (시스템 설정에서 변경한 경우 대비)
+            permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                checkExistingPermissions()
+            }
+        }
+        .onDisappear {
+            // Timer 정리 - 메모리 누수 및 충돌 방지
+            permissionCheckTimer?.invalidate()
+            permissionCheckTimer = nil
         }
     }
     
-    private func animateIn() {
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
-            scale = 1
-            opacity = 1
+    @ViewBuilder
+    private func permissionCard(permission: OnboardingPermission, index: Int, isGranted: Bool) -> some View {
+        HStack(spacing: 12) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(isGranted ? Color.accentColor.opacity(0.2) : Color.white.opacity(0.1))
+                    .frame(width: 48, height: 48)
+                
+                if isGranted {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.accentColor)
+                } else {
+                    Image(systemName: permission.icon)
+                        .font(.system(size: 20))
+                        .foregroundColor(.accentColor)
+                }
+            }
+            
+            // Title and description
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(permission.title)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    if permission.type == .screenRecording {
+                        InfoTip(
+                            title: "화면 녹화 권한",
+                            message: "받아쓰기는 화면의 텍스트를 캡처하여 음성 입력의 컨텍스트를 이해하며, 이를 통해 기록 정확도가 크게 향상됩니다. 개인정보 보호가 중요합니다: 이 데이터는 로컬에서 처리되며 저장되지 않습니다.",
+                            learnMoreURL: "https://www.badasugi.com"
+                        )
+                    }
+                }
+                
+                Text(permission.description)
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            Spacer()
+            
+            // Action button
+            if permission.type == .audioDeviceSelection {
+                // Audio device picker
+                if audioDeviceManager.availableDevices.isEmpty {
+                    VStack(spacing: 4) {
+                        Image(systemName: "mic.slash.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white.opacity(0.5))
+                        Text("마이크 없음")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                } else {
+                    Menu {
+                        ForEach(audioDeviceManager.availableDevices, id: \.id) { device in
+                            Button(action: {
+                                audioDeviceManager.selectDevice(id: device.id)
+                                audioDeviceManager.selectInputMode(.custom)
+                                withAnimation {
+                                    permissionStates[index] = true
+                                }
+                            }) {
+                                HStack {
+                                    Text(device.name)
+                                    if audioDeviceManager.selectedDeviceID == device.id {
+                                        Spacer()
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(audioDeviceManager.availableDevices.first { $0.id == audioDeviceManager.selectedDeviceID }?.name ?? "장치 선택")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 9))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                    .onAppear {
+                        if !audioDeviceManager.availableDevices.isEmpty && audioDeviceManager.selectedDeviceID == nil {
+                            if let deviceID = audioDeviceManager.findBestAvailableDevice() {
+                                audioDeviceManager.selectDevice(id: deviceID)
+                                audioDeviceManager.selectInputMode(.custom)
+                                withAnimation {
+                                    permissionStates[index] = true
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if permission.type == .keyboardShortcut {
+                // Keyboard shortcut picker
+                VStack(spacing: 8) {
+                    Menu {
+                        ForEach(HotkeyManager.HotkeyOption.allCases.filter { $0 != .none && $0 != .custom }, id: \.self) { option in
+                            Button(action: {
+                                hotkeyManager.selectedHotkey1 = option
+                                withAnimation {
+                                    permissionStates[index] = option != .none
+                                }
+                            }) {
+                                HStack {
+                                    Text(option.displayName)
+                                    if hotkeyManager.selectedHotkey1 == option {
+                                        Spacer()
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                        Button(action: {
+                            hotkeyManager.selectedHotkey1 = .custom
+                            withAnimation {
+                                permissionStates[index] = false
+                            }
+                        }) {
+                            HStack {
+                                Text("커스텀")
+                                if hotkeyManager.selectedHotkey1 == .custom {
+                                    Spacer()
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(hotkeyManager.selectedHotkey1.displayName)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 9))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                    
+                    if hotkeyManager.selectedHotkey1 == .custom {
+                        KeyboardShortcuts.Recorder(for: .toggleMiniRecorder) { newShortcut in
+                            withAnimation {
+                                permissionStates[index] = newShortcut != nil
+                            }
+                        }
+                        .controlSize(.regular)
+                    }
+                }
+                .onChange(of: hotkeyManager.selectedHotkey1) { newValue in
+                    if newValue != .custom {
+                        withAnimation {
+                            permissionStates[index] = newValue != .none
+                        }
+                    }
+                }
+            } else {
+                // Permission request button
+                Button(action: {
+                    requestPermission(for: index)
+                }) {
+                    HStack(spacing: 6) {
+                        if isGranted {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 12))
+                        }
+                        Text(isGranted ? "완료" : "설정")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(isGranted ? Color.green.opacity(0.2) : Color.accentColor)
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(isGranted ? Color.green : Color.clear, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
         }
-    }
-    
-    private func resetAnimation() {
-        scale = 0.8
-        opacity = 0
-        animateIn()
+        .padding(12)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isGranted ? Color.accentColor.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
+        )
     }
     
     private func checkExistingPermissions() {
@@ -285,48 +368,31 @@ struct OnboardingPermissionsView: View {
         permissionStates[4] = hotkeyManager.isShortcutConfigured
     }
     
-    private func requestPermission() {
-        if permissionStates[currentPermissionIndex] {
-            moveToNext()
+    private func requestPermission(for index: Int) {
+        if permissionStates[index] {
             return
         }
         
-        switch permissions[currentPermissionIndex].type {
+        switch permissions[index].type {
         case .microphone:
             AVCaptureDevice.requestAccess(for: .audio) { granted in
                 DispatchQueue.main.async {
-                    self.permissionStates[self.currentPermissionIndex] = granted
+                    self.permissionStates[index] = granted
                     if granted {
-                        withAnimation {
-                            self.showAnimation = true
-                        }
                         self.audioDeviceManager.loadAvailableDevices()
+                        // 마이크 권한이 허용되면 자동으로 최적의 장치 선택
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            if let deviceID = self.audioDeviceManager.findBestAvailableDevice() {
+                                self.audioDeviceManager.selectDevice(id: deviceID)
+                                self.audioDeviceManager.selectInputMode(.custom)
+                                withAnimation {
+                                    self.permissionStates[1] = true
+                                }
+                            }
+                        }
                     }
                 }
             }
-            
-        case .audioDeviceSelection:
-            audioDeviceManager.loadAvailableDevices()
-
-            if audioDeviceManager.availableDevices.isEmpty {
-                audioDeviceManager.selectInputMode(.custom)
-                withAnimation {
-                    permissionStates[currentPermissionIndex] = true
-                    showAnimation = true
-                }
-                moveToNext()
-                return
-            }
-
-            if let deviceID = audioDeviceManager.findBestAvailableDevice() {
-                audioDeviceManager.selectDevice(id: deviceID)
-                audioDeviceManager.selectInputMode(.custom)
-                withAnimation {
-                    permissionStates[currentPermissionIndex] = true
-                    showAnimation = true
-                }
-            }
-            moveToNext()
             
         case .accessibility:
             let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
@@ -336,9 +402,10 @@ struct OnboardingPermissionsView: View {
             Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
                 if AXIsProcessTrusted() {
                     timer.invalidate()
-                    permissionStates[currentPermissionIndex] = true
-                    withAnimation {
-                        showAnimation = true
+                    DispatchQueue.main.async {
+                        withAnimation {
+                            self.permissionStates[index] = true
+                        }
                     }
                 }
             }
@@ -356,130 +423,17 @@ struct OnboardingPermissionsView: View {
             Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
                 if CGPreflightScreenCaptureAccess() {
                     timer.invalidate()
-                    permissionStates[currentPermissionIndex] = true
-                    withAnimation {
-                        showAnimation = true
+                    DispatchQueue.main.async {
+                        withAnimation {
+                            self.permissionStates[index] = true
+                        }
                     }
                 }
             }
             
-        case .keyboardShortcut:
-            // The keyboard shortcut is handled by the KeyboardShortcuts.Recorder
+        default:
             break
         }
     }
-    
-    private func moveToNext() {
-        if currentPermissionIndex < permissions.count - 1 {
-            withAnimation {
-                currentPermissionIndex += 1
-                resetAnimation()
-            }
-        } else {
-            withAnimation {
-                showModelDownload = true
-            }
-        }
-    }
-    
-    private func getButtonTitle() -> String {
-        switch permissions[currentPermissionIndex].type {
-        case .keyboardShortcut:
-            return permissionStates[currentPermissionIndex] ? "Continue" : "Set Shortcut"
-        case .audioDeviceSelection:
-            return "Continue"
-        default:
-            return permissionStates[currentPermissionIndex] ? "Continue" : "Enable Access"
-        }
-    }
 
-    @ViewBuilder
-    private func styledPicker<T: Hashable>(
-        label: String,
-        selectedValue: T,
-        displayValue: String,
-        options: [T],
-        optionDisplayName: @escaping (T) -> String,
-        onSelection: @escaping (T) -> Void
-    ) -> some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 12) {
-                Spacer()
-                
-                Text(label)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
-                
-                Menu {
-                    ForEach(options, id: \.self) { option in
-                        Button(action: {
-                            onSelection(option)
-                        }) {
-                            HStack {
-                                Text(optionDisplayName(option))
-                                if selectedValue == option {
-                                    Spacer()
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Text(displayValue)
-                            .foregroundColor(.white)
-                            .font(.system(size: 16, weight: .medium))
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.1))
-                    .cornerRadius(10)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-                }
-                .menuStyle(.borderlessButton)
-                
-                Spacer()
-            }
-        }
-        .padding()
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(12)
-    }
-
-    @ViewBuilder
-    private func hotkeyView(
-        binding: Binding<HotkeyManager.HotkeyOption>,
-        shortcutName: KeyboardShortcuts.Name,
-        onConfigured: @escaping (Bool) -> Void
-    ) -> some View {
-        VStack(spacing: 16) {
-            styledPicker(
-                label: "Shortcut:",
-                selectedValue: binding.wrappedValue,
-                displayValue: binding.wrappedValue.displayName,
-                options: HotkeyManager.HotkeyOption.allCases.filter { $0 != .none && $0 != .custom },
-                optionDisplayName: { $0.displayName },
-                onSelection: { option in
-                    binding.wrappedValue = option
-                    onConfigured(option.isModifierKey)
-                }
-            )
-
-            if binding.wrappedValue == .custom {
-                KeyboardShortcuts.Recorder(for: shortcutName) { newShortcut in
-                    onConfigured(newShortcut != nil)
-                }
-                .controlSize(.large)
-            }
-        }
-        .onChange(of: binding.wrappedValue) { newValue in
-            onConfigured(newValue != .none)
-        }
-    }
 }

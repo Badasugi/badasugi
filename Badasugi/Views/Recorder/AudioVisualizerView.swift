@@ -34,8 +34,19 @@ struct AudioVisualizer: View {
         HStack(spacing: barSpacing) {
             ForEach(0..<barCount, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 1.7)
-                    .fill(color)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                color.opacity(0.9),
+                                color.opacity(0.6),
+                                color.opacity(0.4)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
                     .frame(width: barWidth, height: barHeights[index])
+                    .shadow(color: color.opacity(0.3), radius: 1, x: 0, y: 0)
             }
         }
         .onChange(of: audioMeter) { _, newValue in
@@ -97,16 +108,26 @@ struct AudioVisualizer: View {
 struct StaticVisualizer: View {
     private let barCount = 12
     private let barWidth: CGFloat = 3.5
-    private let staticHeight: CGFloat = 5.0 
+    private let staticHeight: CGFloat = 5.0
     private let barSpacing: CGFloat = 2.3
     let color: Color
-    
+
+    @State private var waveOffset: CGFloat = 0
+
     var body: some View {
         HStack(spacing: barSpacing) {
             ForEach(0..<barCount, id: \.self) { index in
+                let waveEffect = sin(CGFloat(index) * 0.8 + waveOffset) * 0.3 + 1.0
+
                 RoundedRectangle(cornerRadius: 1.7)
-                    .fill(color)
-                    .frame(width: barWidth, height: staticHeight)
+                    .fill(color.opacity(0.6))
+                    .frame(width: barWidth, height: staticHeight * waveEffect)
+                    .animation(.easeInOut(duration: 2), value: waveEffect)
+            }
+        }
+        .onAppear {
+            withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                waveOffset = .pi * 2
             }
         }
     }

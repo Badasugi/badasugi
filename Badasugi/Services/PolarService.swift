@@ -1,12 +1,26 @@
 import Foundation
-import IOKit
 import os
 
 class PolarService {
-    private let organizationId = "Org"
-    private let apiToken = "Token"
+    // These values should be set at build time via Info.plist or environment variables
+    // For open source builds, these will be placeholders
+    private let organizationId: String
+    private let apiToken: String
     private let baseURL = "https://api.polar.sh"
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "PolarService")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "PolarService")
+    
+    init(organizationId: String? = nil, apiToken: String? = nil) {
+        // Try to read from Info.plist first, then environment variables, then use defaults
+        self.organizationId = organizationId 
+            ?? Bundle.main.object(forInfoDictionaryKey: "PolarOrgId") as? String
+            ?? ProcessInfo.processInfo.environment["POLAR_ORG_ID"]
+            ?? "Org"
+        
+        self.apiToken = apiToken
+            ?? Bundle.main.object(forInfoDictionaryKey: "PolarApiToken") as? String
+            ?? ProcessInfo.processInfo.environment["POLAR_API_TOKEN"]
+            ?? "Token"
+    }
     
     // Create an authenticated URLRequest for the given endpoint
     private func createAuthenticatedRequest(endpoint: String, method: String = "POST") -> URLRequest {

@@ -45,7 +45,7 @@ struct SettingsContainerView: View {
         HStack(spacing: 0) {
             // Left sidebar with subsection list
             ScrollView {
-                VStack(spacing: 4) {
+                VStack(spacing: 6) {
                     ForEach(visibleSubsections) { subsection in
                         SettingsSubsectionRow(
                             subsection: subsection,
@@ -58,9 +58,9 @@ struct SettingsContainerView: View {
                         )
                     }
                 }
-                .padding(12)
+                .padding(14)
             }
-            .frame(width: 180)
+            .frame(width: 200)
             .background(Color(NSColor.controlBackgroundColor))
             
             Divider()
@@ -125,18 +125,18 @@ private struct SettingsSubsectionRow: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: subsection.icon)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(isSelected ? Color.accentColor : .secondary)
-                    .frame(width: 24)
+                    .frame(width: 26)
                 
                 Text(subsection.rawValue)
-                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                    .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .primary : .secondary)
                 
                 Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)

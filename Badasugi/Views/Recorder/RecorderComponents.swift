@@ -125,20 +125,32 @@ struct ProcessingIndicator: View {
 struct ProgressAnimation: View {
     @State private var currentDot = 0
     @State private var timer: Timer?
+    @State private var waveOffset: CGFloat = 0
     let animationSpeed: Double
-    
+
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 3) {
             ForEach(0..<5, id: \.self) { index in
+                let distance = abs(currentDot - index)
+                let opacity = max(0.1, 0.8 - Double(distance) * 0.15)
+                let scale = 1.0 + sin(CGFloat(index) * 0.5 + waveOffset) * 0.2
+
                 Circle()
-                    .fill(Color.white.opacity(index <= currentDot ? 0.8 : 0.2))
-                    .frame(width: 3.5, height: 3.5)
+                    .fill(Color.white.opacity(opacity))
+                    .frame(width: 4, height: 4)
+                    .scaleEffect(scale)
+                    .animation(.easeInOut(duration: 0.3), value: scale)
             }
         }
         .onAppear {
             timer = Timer.scheduledTimer(withTimeInterval: animationSpeed, repeats: true) { _ in
                 currentDot = (currentDot + 1) % 7
                 if currentDot >= 5 { currentDot = -1 }
+            }
+
+            // 물결 애니메이션
+            withAnimation(.linear(duration: 2).repeatForever(autoreverses: false)) {
+                waveOffset = .pi * 2
             }
         }
         .onDisappear {
@@ -289,20 +301,24 @@ struct RecorderStatusDisplay: View {
                 VStack(spacing: 2) {
                     Text("Enhancing")
                         .foregroundColor(.white)
-                        .font(.system(size: 11, weight: .medium, design: .default))
+                        .font(.system(size: 11, weight: .semibold, design: .default))
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
-                    
+                        .shadow(color: Color.blue.opacity(0.8), radius: 2, x: 0, y: 0)
+                        .shadow(color: Color.cyan.opacity(0.4), radius: 4, x: 0, y: 0)
+
                     ProgressAnimation(animationSpeed: 0.15)
                 }
             } else if currentState == .transcribing {
                 VStack(spacing: 2) {
                     Text("Transcribing")
                         .foregroundColor(.white)
-                        .font(.system(size: 11, weight: .medium, design: .default))
+                        .font(.system(size: 11, weight: .semibold, design: .default))
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
-                    
+                        .shadow(color: Color.blue.opacity(0.8), radius: 2, x: 0, y: 0)
+                        .shadow(color: Color.cyan.opacity(0.4), radius: 4, x: 0, y: 0)
+
                     ProgressAnimation(animationSpeed: 0.12)
                 }
             } else if currentState == .recording {

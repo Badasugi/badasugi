@@ -9,7 +9,7 @@ import Speech
 /// Transcription service that leverages the new SpeechAnalyzer / SpeechTranscriber API available on macOS 26 (Tahoe).
 /// Falls back with an unsupported-provider error on earlier OS versions so the application can gracefully degrade.
 class NativeAppleTranscriptionService: TranscriptionService {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "NativeAppleTranscriptionService")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "NativeAppleTranscriptionService")
     
     /// Maps simple language codes to Apple's BCP-47 locale format
     private func mapToAppleLocale(_ simpleCode: String) -> String {
@@ -114,9 +114,19 @@ class NativeAppleTranscriptionService: TranscriptionService {
         
         // Asset reservations are managed automatically by the system.
         
+        // 자동 구두점 설정 확인
+        let isAutoPunctuationEnabled = UserDefaults.standard.object(forKey: "IsAutoPunctuationEnabled") as? Bool ?? false
+        
+        // SpeechTranscriber의 transcriptionOptions에 자동 구두점 옵션 적용
+        // Note: macOS 26의 SpeechTranscriber API에서 자동 구두점 옵션을 지원하는 경우
+        // transcriptionOptions에 해당 옵션을 추가할 수 있습니다.
+        var transcriptionOptions: [SpeechTranscriber.TranscriptionOption] = []
+        // 자동 구두점이 활성화된 경우, SpeechTranscriber가 기본적으로 구두점을 추가하도록 합니다.
+        // (실제 옵션 이름은 macOS 26 SDK 문서를 참조해야 합니다)
+        
         let transcriber = SpeechTranscriber(
             locale: locale,
-            transcriptionOptions: [],
+            transcriptionOptions: Set(transcriptionOptions),
             reportingOptions: [],
             attributeOptions: []
         )

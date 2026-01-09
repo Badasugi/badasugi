@@ -5,6 +5,7 @@ struct OnboardingView: View {
     @State private var textOpacity: CGFloat = 0
     @State private var showSecondaryElements = false
     @State private var showPermissions = false
+    @State private var logoOpacity: CGFloat = 0
     
     // Animation timing
     private let animationDelay = 0.2
@@ -17,68 +18,93 @@ struct OnboardingView: View {
                     // Reusable background
                     OnboardingBackgroundView()
                     
-                    // Content container
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 0) {
-                            // Content Area
-                            VStack(spacing: 60) {
-                                Spacer()
-                                    .frame(height: 40)
-                                
-                                // Title and subtitle
-                                VStack(spacing: 16) {
-                                    Text("Welcome to the Future of Typing")
-                                        .font(.system(size: min(geometry.size.width * 0.055, 42), weight: .bold, design: .rounded))
-                                        .foregroundColor(.white)
-                                        .opacity(textOpacity)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal)
-                                    
-                                    Text("A New Way to Type")
-                                        .font(.system(size: min(geometry.size.width * 0.032, 24), weight: .medium, design: .rounded))
-                                        .foregroundColor(.white.opacity(0.7))
-                                        .opacity(textOpacity)
-                                        .multilineTextAlignment(.center)
-                                }
-                                
-                                if showSecondaryElements {
-                                    // Typewriter roles animation
-                                    TypewriterRoles()
-                                        .frame(height: 160)
-                                        .transition(.scale.combined(with: .opacity))
-                                        .padding(.horizontal, 40)
+                    // Content container - 모든 요소를 한 화면에 배치
+                    VStack(spacing: 0) {
+                        Spacer()
+                        
+                        // Content Area
+                        VStack(spacing: 30) {
+                            // Logo image (크기 줄임)
+                            Group {
+                                if let logoPath = Bundle.main.path(forResource: "badasugi logo macVer - Edited (1)", ofType: "png"),
+                                   let logoImage = NSImage(contentsOfFile: logoPath) {
+                                    Image(nsImage: logoImage)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: min(geometry.size.width * 0.18, 150), height: min(geometry.size.width * 0.18, 150))
+                                        .opacity(logoOpacity)
+                                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                                } else {
+                                    // Fallback to Assets if bundle resource not found
+                                    Image("BadasugiLogoMac")
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: min(geometry.size.width * 0.18, 150), height: min(geometry.size.width * 0.18, 150))
+                                        .opacity(logoOpacity)
+                                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
                                 }
                             }
-                            .padding(.top, geometry.size.height * 0.15)
                             
-                            Spacer(minLength: geometry.size.height * 0.2)
+                            // Title and subtitle
+                            VStack(spacing: 12) {
+                                Text("말하면 끝, 받아쓰기")
+                                    .font(.system(size: min(geometry.size.width * 0.05, 38), weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .opacity(textOpacity)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
+                                
+                                Text("한국인을 위한 완벽한 음성인식 앱")
+                                    .font(.system(size: min(geometry.size.width * 0.028, 20), weight: .medium, design: .rounded))
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .opacity(textOpacity)
+                                    .multilineTextAlignment(.center)
+                            }
                             
-                            // Bottom navigation
                             if showSecondaryElements {
-                                VStack(spacing: 20) {
-                                    Button(action: {
-                                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                            showPermissions = true
-                                        }
-                                    }) {
-                                        Text("Get Started")
-                                            .font(.system(size: 18, weight: .semibold))
-                                            .foregroundColor(.black)
-                                            .frame(width: min(geometry.size.width * 0.3, 200), height: 50)
-                                            .background(Color.white)
-                                            .cornerRadius(25)
-                                    }
-                                    .buttonStyle(ScaleButtonStyle())
-                                    
-                                    SkipButton(text: "Skip Tour") {
-                                        hasCompletedOnboarding = true
-                                    }
-                                }
-                                .padding(.bottom, 35)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                                // Typewriter roles animation (높이 줄임)
+                                TypewriterRoles()
+                                    .frame(height: 100)
+                                    .transition(.scale.combined(with: .opacity))
+                                    .padding(.horizontal, 40)
                             }
                         }
+                        
+                        Spacer()
+                        
+                        // Bottom navigation
+                        if showSecondaryElements {
+                            VStack(spacing: 16) {
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                                        showPermissions = true
+                                    }
+                                }) {
+                                    Text("시작하기")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(.black)
+                                        .frame(width: min(geometry.size.width * 0.3, 200), height: 50)
+                                        .background(Color.white)
+                                        .cornerRadius(25)
+                                }
+                                .buttonStyle(ScaleButtonStyle())
+                                
+                                SkipButton(text: "건너뛰기") {
+                                    hasCompletedOnboarding = true
+                                }
+                            }
+                            .padding(.bottom, 40)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        } else {
+                            // Placeholder to maintain layout
+                            VStack(spacing: 16) {
+                                Spacer()
+                            }
+                            .frame(height: 80)
+                            .padding(.bottom, 40)
+                        }
                     }
+                    .padding(.horizontal, 20)
                 }
             }
             
@@ -93,6 +119,11 @@ struct OnboardingView: View {
     }
     
     private func startAnimations() {
+        // Logo fade in (appears first)
+        withAnimation(.easeOut(duration: textAnimationDuration)) {
+            logoOpacity = 1
+        }
+        
         // Text fade in
         withAnimation(.easeOut(duration: textAnimationDuration).delay(animationDelay)) {
             textOpacity = 1
@@ -110,11 +141,10 @@ struct OnboardingView: View {
 // MARK: - Supporting Views
 struct TypewriterRoles: View {
     private let roles = [
-        "Your Writing Assistant",
-        "Your Vibe-Coding Assistant",
-        "Works Everywhere on Mac with a click",
-        "100% offline & private",
-       
+        "당신의 받아쓰기 AI",
+        "어디서나 클릭 한 번으로",
+        "100% 완전한 프라이버시",
+        "우리의 시간은 소중하니까"
     ]
     
     @State private var displayedText = ""
@@ -133,7 +163,7 @@ struct TypewriterRoles: View {
         VStack {
             HStack(spacing: 0) {
                 Text(displayedText)
-                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [
@@ -148,7 +178,7 @@ struct TypewriterRoles: View {
                 
                 // Blinking cursor
                 Text("|")
-                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [

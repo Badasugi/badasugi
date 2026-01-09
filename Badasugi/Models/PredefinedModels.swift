@@ -77,236 +77,53 @@ import Foundation
         return predefinedModels + CustomModelManager.shared.customModels
     }
     
+    // 한국어 전용 앱을 위한 간소화된 모델 목록 (4개만 유지)
     private static let predefinedModels: [any TranscriptionModel] = [
-        // Native Apple Model
-        NativeAppleModel(
-            name: "apple-speech",
-            displayName: "Apple Speech",
-            description: "Uses the native Apple Speech framework for transcription. Requires macOS 26.",
-            isMultilingualModel: true,
-            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .nativeApple)
-        ),
-        
-        // Parakeet Models
-        ParakeetModel(
-            name: "parakeet-tdt-0.6b-v2",
-            displayName: "Parakeet V2",
-            description: "NVIDIA's Parakeet V2 model optimized for lightning-fast English-only transcription.",
-            size: "474 MB",
-            speed: 0.99,
-            accuracy: 0.94,
-            ramUsage: 0.8,
-            supportedLanguages: getLanguageDictionary(isMultilingual: false, provider: .parakeet)
-        ),
-        ParakeetModel(
-            name: "parakeet-tdt-0.6b-v3",
-            displayName: "Parakeet V3",
-            description: "NVIDIA's Parakeet V3 model with multilingual support across English and 25 European languages.",
-            size: "494 MB",
-            speed: 0.99,
-            accuracy: 0.94,
-            ramUsage: 0.8,
-            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .parakeet)
-        ),
-        
-         // Local Models
-         LocalModel(
-             name: "ggml-tiny",
-             displayName: "Tiny",
-             size: "75 MB",
-             supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .local),
-             description: "Tiny model, fastest, least accurate",
-             speed: 0.95,
-             accuracy: 0.6,
-             ramUsage: 0.3
-         ),
-         LocalModel(
-             name: "ggml-tiny.en",
-             displayName: "Tiny (English)",
-             size: "75 MB",
-             supportedLanguages: getLanguageDictionary(isMultilingual: false, provider: .local),
-             description: "Tiny model optimized for English, fastest, least accurate",
-             speed: 0.95,
-             accuracy: 0.65,
-             ramUsage: 0.3
-         ),
-         LocalModel(
-             name: "ggml-base",
-             displayName: "Base",
-             size: "142 MB",
-             supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .local),
-             description: "Base model, good balance between speed and accuracy, supports multiple languages",
-             speed: 0.85,
-             accuracy: 0.72,
-             ramUsage: 0.5
-         ),
-         LocalModel(
-             name: "ggml-base.en",
-             displayName: "Base (English)",
-             size: "142 MB",
-             supportedLanguages: getLanguageDictionary(isMultilingual: false, provider: .local),
-             description: "Base model optimized for English, good balance between speed and accuracy",
-             speed: 0.85,
-             accuracy: 0.75,
-             ramUsage: 0.5
-         ),
-         LocalModel(
-             name: "ggml-large-v2",
-             displayName: "Large v2",
-             size: "2.9 GB",
-             supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .local),
-             description: "Large model v2, slower than Medium but more accurate",
-             speed: 0.3,
-             accuracy: 0.96,
-             ramUsage: 3.8
-         ),
-         LocalModel(
-             name: "ggml-large-v3",
-             displayName: "Large v3",
-             size: "2.9 GB",
-             supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .local),
-             description: "Large model v3, very slow but most accurate",
-             speed: 0.3,
-             accuracy: 0.98,
-             ramUsage: 3.9
-         ),
-         LocalModel(
-             name: "ggml-large-v3-turbo",
-             displayName: "Large v3 Turbo",
-             size: "1.5 GB",
-             supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .local),
-             description:
-             "Large model v3 Turbo, faster than v3 with similar accuracy",
-             speed: 0.75,
-             accuracy: 0.97,
-             ramUsage: 1.8
-         ),
-         LocalModel(
-             name: "ggml-large-v3-turbo-q5_0",
-             displayName: "Large v3 Turbo (Quantized)",
-             size: "547 MB",
-             supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .local),
-             description: "Quantized version of Large v3 Turbo, faster with slightly lower accuracy",
-             speed: 0.75,
-             accuracy: 0.95,
-             ramUsage: 1.0
-         ),
-         
-                 // Cloud Models
+        // 1) Whisper Large v3 Turbo (Groq) - 추천 모델, 클라우드
         CloudModel(
             name: "whisper-large-v3-turbo",
             displayName: "Whisper Large v3 Turbo (Groq)",
-            description: "Whisper Large v3 Turbo model with Groq's lightning-speed inference",
+            description: "최고 정확도의 클라우드 모델. Groq의 초고속 추론으로 빠르고 정확한 한국어 음성 인식을 제공합니다. 무료 API 키로 사용 가능.",
             provider: .groq,
-            speed: 0.65,
-            accuracy: 0.96,
+            speed: 0.95,
+            accuracy: 0.98,
             isMultilingual: true,
             supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .groq)
         ),
-        CloudModel(
-           name: "scribe_v1",
-           displayName: "Scribe v1 (ElevenLabs)",
-           description: "ElevenLabs' Scribe model for fast & accurate transcription.",
-           provider: .elevenLabs,
-           speed: 0.7,
-           accuracy: 0.98,
-           isMultilingual: true,
-           supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .elevenLabs)
-       ),
-       CloudModel(
-           name: "scribe_v2",
-           displayName: "Scribe v2 (ElevenLabs)",
-           description: "ElevenLabs' Scribe v2 model for the most accurate transcription.",
-           provider: .elevenLabs,
-           speed: 0.75,
-           accuracy: 0.99,
-           isMultilingual: true,
-           supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .elevenLabs)
-       ),
-       CloudModel(
-           name: "nova-2",
-           displayName: "Nova (Deepgram)",
-           description: "Deepgram's Nova model for fast, accurate, and cost-effective transcription.",
-           provider: .deepgram,
-           speed: 0.9,
-           accuracy: 0.95,
-           isMultilingual: true,
-           supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .deepgram)
-       ),
-       CloudModel(
-           name: "nova-3-medical",
-           displayName: "Nova-3 Medical (Deepgram)",
-           description: "Specialized medical transcription model optimized for clinical environments.",
-           provider: .deepgram,
-           speed: 0.9,
-           accuracy: 0.96,
-           isMultilingual: false,
-           supportedLanguages: getLanguageDictionary(isMultilingual: false, provider: .deepgram)
-       ),
-        CloudModel(
-            name: "voxtral-mini-latest",
-            displayName: "Voxtral Mini (Mistral)",
-            description: "Mistral's latest SOTA transcription model.",
-            provider: .mistral,
-            speed: 0.8,
-            accuracy: 0.97,
-            isMultilingual: true,
-            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .mistral)
-        ),
         
-        // Gemini Models
-        CloudModel(
-            name: "gemini-2.5-pro",
-            displayName: "Gemini 2.5 Pro",
-            description: "Google's advanced multimodal model with high-quality transcription capabilities.",
-            provider: .gemini,
-            speed: 0.7,
-            accuracy: 0.96,
-            isMultilingual: true,
-            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .gemini)
-        ),
-        CloudModel(
-            name: "gemini-2.5-flash",
-            displayName: "Gemini 2.5 Flash",
-            description: "Google's optimized model for low-latency transcription with multimodal support.",
-            provider: .gemini,
-            speed: 0.9,
-            accuracy: 0.94,
-            isMultilingual: true,
-            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .gemini)
-        ),
-        CloudModel(
-            name: "gemini-3-pro-preview",
-            displayName: "Gemini 3 Pro",
-            description: "Google's latest multimodal model with enhanced transcription capabilities.",
-            provider: .gemini,
+        // 2) Large v3 Turbo (로컬) - 기본 대안 모델
+        LocalModel(
+            name: "ggml-large-v3-turbo",
+            displayName: "Large v3 Turbo (로컬)",
+            size: "1.5 GB",
+            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .local),
+            description: "오프라인에서도 사용 가능한 고정확도 로컬 모델. 인터넷 연결 없이 한국어 음성 인식이 가능합니다.",
             speed: 0.75,
             accuracy: 0.97,
-            isMultilingual: true,
-            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .gemini)
+            ramUsage: 1.8
         ),
-        CloudModel(
-            name: "gemini-3-flash-preview",
-            displayName: "Gemini 3 Flash",
-            description: "Google's newest fast model combining intelligence with superior speed.",
-            provider: .gemini,
-            speed: 0.92,
-            accuracy: 0.95,
-            isMultilingual: true,
-            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .gemini)
+        
+        // 3) Large v3 Turbo (Quantized) - 저사양 Mac용
+        LocalModel(
+            name: "ggml-large-v3-turbo-q5_0",
+            displayName: "Large v3 Turbo (경량)",
+            size: "547 MB",
+            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .local),
+            description: "저사양 Mac을 위한 경량 모델. 정확도는 다소 낮을 수 있지만 빠르게 동작합니다.",
+            speed: 0.85,
+            accuracy: 0.93,
+            ramUsage: 1.0
+        ),
+        
+        // 4) Apple Speech - macOS 네이티브, fallback
+        NativeAppleModel(
+            name: "apple-speech",
+            displayName: "Apple Speech",
+            description: "macOS 기본 음성 인식. 추가 다운로드 없이 바로 사용 가능합니다. (macOS 26 이상 필요)",
+            isMultilingualModel: true,
+            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .nativeApple)
         )
-        ,
-        CloudModel(
-            name: "stt-async-v3",
-            displayName: "Soniox (stt-async-v3)",
-            description: "Soniox asynchronous transcription model v3.",
-            provider: .soniox,
-            speed: 0.8,
-            accuracy: 0.96,
-            isMultilingual: true,
-            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .soniox)
-        )
-     ]
+    ]
  
      static let allLanguages = [
          "auto": "Auto-detect",

@@ -66,7 +66,11 @@ class LastTranscriptionService: ObservableObject {
             return
         }
         
-        let textToPaste = lastTranscription.text
+        let shouldAppendTrailingSpace = UserDefaults.standard.object(forKey: "AppendTrailingSpace") as? Bool ?? true
+        let baseText = lastTranscription.text
+        let textToPaste = shouldAppendTrailingSpace
+            ? (baseText.hasSuffix(" ") ? baseText : baseText + " ")
+            : baseText
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             let success = CursorPaster.pasteAtCursor(textToPaste)
@@ -92,6 +96,7 @@ class LastTranscriptionService: ObservableObject {
         }
         
         // Prefer enhanced text; if unavailable, fallback to original text (which may contain an error message)
+        let shouldAppendTrailingSpace = UserDefaults.standard.object(forKey: "AppendTrailingSpace") as? Bool ?? true
         let textToPaste: String = {
             if let enhancedText = lastTranscription.enhancedText, !enhancedText.isEmpty {
                 return enhancedText
@@ -99,9 +104,12 @@ class LastTranscriptionService: ObservableObject {
                 return lastTranscription.text
             }
         }()
+        let finalTextToPaste = shouldAppendTrailingSpace
+            ? (textToPaste.hasSuffix(" ") ? textToPaste : textToPaste + " ")
+            : textToPaste
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            let success = CursorPaster.pasteAtCursor(textToPaste)
+            let success = CursorPaster.pasteAtCursor(finalTextToPaste)
             if !success {
                 NotificationManager.shared.showNotification(
                     title: "텍스트가 클립보드에 복사되었습니다. 수동으로 붙여넣기(Cmd+V)를 사용하세요.",

@@ -34,14 +34,14 @@ struct BadasugiApp: App {
     
     init() {
         // Configure FluidAudio logging subsystem
-        AppLogger.defaultSubsystem = "com.prakashjoshipax.badasugi.parakeet"
+        AppLogger.defaultSubsystem = "com.badasugi.app.parakeet"
 
         if UserDefaults.standard.object(forKey: "powerModeUIFlag") == nil {
             let hasEnabledPowerModes = PowerModeManager.shared.configurations.contains { $0.isEnabled }
             UserDefaults.standard.set(hasEnabledPowerModes, forKey: "powerModeUIFlag")
         }
 
-        let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "Initialization")
+        let logger = Logger(subsystem: "com.badasugi.app", category: "Initialization")
         let schema = Schema([
             Transcription.self,
             VocabularyWord.self,
@@ -265,7 +265,7 @@ struct BadasugiApp: App {
                     .frame(minWidth: 880, minHeight: 780)
                     .preferredColorScheme(.dark)
                     .background(WindowAccessor { window in
-                        if window.identifier == nil || window.identifier != NSUserInterfaceItemIdentifier("com.prakashjoshipax.badasugi.onboardingWindow") {
+                        if window.identifier == nil || window.identifier != NSUserInterfaceItemIdentifier("com.badasugi.app.onboardingWindow") {
                             WindowManager.shared.configureOnboardingPanel(window)
                         }
                     })

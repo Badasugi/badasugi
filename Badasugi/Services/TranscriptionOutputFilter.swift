@@ -2,7 +2,7 @@ import Foundation
 import os
 
 struct TranscriptionOutputFilter {
-    private static let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "TranscriptionOutputFilter")
+    private static let logger = Logger(subsystem: "com.badasugi.app", category: "TranscriptionOutputFilter")
     
     private static let hallucinationPatterns = [
         #"\[.*?\]"#,     // []
@@ -44,10 +44,14 @@ struct TranscriptionOutputFilter {
         // Clean whitespace
         filteredText = filteredText.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
         filteredText = filteredText.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Remove trailing periods (마침표 자동 추가 방지)
-        while filteredText.hasSuffix(".") {
-            filteredText = String(filteredText.dropLast()).trimmingCharacters(in: .whitespaces)
+
+        // When auto punctuation is OFF, strip trailing periods to avoid Whisper-style dot spam.
+        // When auto punctuation is ON, we must preserve punctuation (including terminal '.').
+        let isAutoPunctuationEnabled = UserDefaults.standard.object(forKey: "IsAutoPunctuationEnabled") as? Bool ?? false
+        if !isAutoPunctuationEnabled {
+            while filteredText.hasSuffix(".") {
+                filteredText = String(filteredText.dropLast()).trimmingCharacters(in: .whitespaces)
+            }
         }
 
         // Log results

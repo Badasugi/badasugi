@@ -2,117 +2,73 @@ import SwiftUI
 
 struct ModelSettingsView: View {
     @ObservedObject var whisperPrompt: WhisperPrompt
-    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
+    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "ko"
     @AppStorage("IsTextFormattingEnabled") private var isTextFormattingEnabled = true
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
     @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
     @AppStorage("PrewarmModelOnWake") private var prewarmModelOnWake = true
-    @State private var customPrompt: String = ""
-    @State private var isEditing: Bool = false
+    @AppStorage("IsAutoPunctuationEnabled") private var isAutoPunctuationEnabled = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Output Format")
-                    .font(.headline)
-                
-                InfoTip(
-                    title: "Output Format Guide",
-                    message: "Unlike GPT, Voice Models(whisper) follows the style of your prompt rather than instructions. Use examples of your desired output format instead of commands.",
-                    learnMoreURL: "https://cookbook.openai.com/examples/whisper_prompting_guide#comparison-with-gpt-prompting"
-                )
-                
-                Spacer()
-                
-                Button(action: {
-                    if isEditing {
-                        // Save changes
-                        whisperPrompt.setCustomPrompt(customPrompt, for: selectedLanguage)
-                        isEditing = false
-                    } else {
-                        // Enter edit mode
-                        customPrompt = whisperPrompt.getLanguagePrompt(for: selectedLanguage)
-                        isEditing = true
-                    }
-                }) {
-                    Text(isEditing ? "Save" : "Edit")
-                        .font(.caption)
-                }
-            }
-            
-            if isEditing {
-                TextEditor(text: $customPrompt)
-                    .font(.system(size: 12))
-                    .padding(8)
-                    .frame(height: 80)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                    )
-                
-            } else {
-                Text(whisperPrompt.getLanguagePrompt(for: selectedLanguage))
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color(.windowBackgroundColor).opacity(0.4))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                    )
-            }
-
-            Divider().padding(.vertical, 4)
 
             HStack {
                 Toggle(isOn: $appendTrailingSpace) {
-                    Text("Add space after paste")
+                    Text("붙여넣기 후 공백 추가")
                 }
                 .toggleStyle(.switch)
                 
                 InfoTip(
-                    title: "Trailing Space",
-                    message: "Automatically add a space after pasted text. Useful for space-delimited languages."
+                    title: "후행 공백",
+                    message: "붙여넣은 텍스트 뒤에 자동으로 공백을 추가합니다. 공백으로 구분되는 언어에 유용합니다."
+                )
+            }
+
+            HStack {
+                Toggle(isOn: $isAutoPunctuationEnabled) {
+                    Text("자동 구두점")
+                }
+                .toggleStyle(.switch)
+                
+                InfoTip(
+                    title: "자동 구두점",
+                    message: "음성 인식 시 문장 끝에 자동으로 마침표, 쉼표 등의 구두점을 추가합니다."
                 )
             }
 
             HStack {
                 Toggle(isOn: $isTextFormattingEnabled) {
-                    Text("Automatic text formatting")
+                    Text("자동 텍스트 포맷팅")
                 }
                 .toggleStyle(.switch)
                 
                 InfoTip(
-                    title: "Automatic Text Formatting",
-                    message: "Apply intelligent text formatting to break large block of text into paragraphs."
+                    title: "자동 텍스트 포맷팅",
+                    message: "큰 텍스트 블록을 단락으로 나누는 지능형 텍스트 포맷팅을 적용합니다."
                 )
             }
 
             HStack {
                 Toggle(isOn: $isVADEnabled) {
-                    Text("Voice Activity Detection (VAD)")
+                    Text("음성 활동 감지 (VAD)")
                 }
                 .toggleStyle(.switch)
 
                 InfoTip(
-                    title: "Voice Activity Detection",
-                    message: "Detect speech segments and filter out silence to improve accuracy of local models."
+                    title: "음성 활동 감지",
+                    message: "음성 구간을 감지하고 침묵을 필터링하여 로컬 모델의 정확도를 향상시킵니다."
                 )
             }
 
             HStack {
                 Toggle(isOn: $prewarmModelOnWake) {
-                    Text("Prewarm model (Experimental)")
+                    Text("모델 사전 준비 (실험적)")
                 }
                 .toggleStyle(.switch)
 
                 InfoTip(
-                    title: "Prewarm Model (Experimental)",
-                    message: "Turn this on if transcriptions with local models are taking longer than expected. Runs silent background transcription on app launch and wake to trigger optimization."
+                    title: "모델 사전 준비 (실험적)",
+                    message: "로컬 모델로 전사하는 데 예상보다 시간이 오래 걸리는 경우 이 옵션을 켜세요. 앱 실행 및 깨우기 시 조용한 백그라운드 전사를 실행하여 최적화를 트리거합니다."
                 )
             }
 
@@ -120,10 +76,15 @@ struct ModelSettingsView: View {
         .padding()
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(10)
+        .onAppear {
+            // 언어를 항상 한국어로 고정
+            selectedLanguage = "ko"
+        }
         // Reset the editor when language changes
         .onChange(of: selectedLanguage) { oldValue, newValue in
-            if isEditing {
-                customPrompt = whisperPrompt.getLanguagePrompt(for: selectedLanguage)
+            // 언어를 항상 한국어로 유지
+            if newValue != "ko" {
+                selectedLanguage = "ko"
             }
         }
     }

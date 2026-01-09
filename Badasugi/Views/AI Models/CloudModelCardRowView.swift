@@ -15,6 +15,7 @@ struct CloudModelCardView: View {
     @State private var verificationStatus: VerificationStatus = .none
     @State private var isConfiguredState: Bool = false
     @State private var verificationError: String? = nil
+    @State private var showGroqKeySteps: Bool = false
     
     enum VerificationStatus {
         case none, verifying, success, failure
@@ -90,7 +91,30 @@ struct CloudModelCardView: View {
     }
     
     private var statusBadge: some View {
-        Group {
+        HStack(spacing: 6) {
+            // Groq 모델에 "최고 정확도" 뱃지 표시
+            if model.provider == .groq {
+                HStack(spacing: 3) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 8))
+                    Text("최고 정확도")
+                }
+                .font(.system(size: 10, weight: .semibold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.orange, Color.yellow.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                )
+                .foregroundColor(.white)
+            }
+            
             if isCurrent {
                 Text("기본")
                     .font(.system(size: 11, weight: .medium))
@@ -164,12 +188,25 @@ struct CloudModelCardView: View {
                     .font(.system(size: 12))
                     .foregroundColor(Color(.secondaryLabelColor))
             } else if isConfiguredState {
-                Button(action: setDefaultAction) {
-                    Text("기본으로 설정")
-                        .font(.system(size: 12))
+                HStack(spacing: 8) {
+                    Button(action: setDefaultAction) {
+                        Text("기본으로 설정")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    
+                    Button(action: {
+                        withAnimation(.interpolatingSpring(stiffness: 170, damping: 20)) {
+                            isExpanded.toggle()
+                        }
+                    }) {
+                        Image(systemName: "gear")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color(.secondaryLabelColor))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             } else {
                 Button(action: {
                     withAnimation(.interpolatingSpring(stiffness: 170, damping: 20)) {
@@ -213,7 +250,13 @@ struct CloudModelCardView: View {
     }
     
     private var configurationSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
+            // Groq 전용 안내 UI
+            if model.provider == .groq {
+                groqSetupGuideSection
+                Divider()
+            }
+            
             Text("API 키 설정")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
@@ -222,6 +265,22 @@ struct CloudModelCardView: View {
                 SecureField("\(model.provider.rawValue) API 키 입력", text: $apiKey)
                     .textFieldStyle(.roundedBorder)
                     .disabled(isVerifying)
+                
+                // API 키가 설정된 상태일 때 제거 버튼 표시
+                if isConfiguredState && !apiKey.isEmpty {
+                    Button(action: clearAPIKey) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color(.systemRed))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
                 
                 Button(action: verifyAPIKey) {
                     HStack(spacing: 4) {
@@ -263,6 +322,158 @@ struct CloudModelCardView: View {
                     .font(.caption)
                     .foregroundColor(Color(.systemGreen))
             }
+            
+            // 보안 안내
+            securityInfoSection
+            
+            // 오프라인 모델 전환 안내
+            offlineModelSuggestionSection
+        }
+    }
+    
+    // MARK: - Groq Setup Guide
+    @ViewBuilder
+    private var groqSetupGuideSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.blue)
+                Text("2–3분이면 설정 완료")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color(.labelColor))
+            }
+            
+            HStack(spacing: 6) {
+                groqInfoPill("무료")
+                groqInfoPill("로컬 저장")
+                groqInfoPill("외부 전송 없음")
+                    .help("Badasugi 서버로 전송하지 않습니다. (Groq 인증에만 사용)")
+            }
+            
+            if showGroqKeySteps {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("발급 방법")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(.labelColor))
+                    
+                    Text("1) Groq 로그인/가입")
+                    Text("2) Console → API Keys → Create")
+                    Text("3) 키 복사 → 아래 입력칸에 붙여넣기")
+                }
+                .font(.system(size: 12))
+                .foregroundColor(Color(.secondaryLabelColor))
+                .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("버튼을 누르면 Groq 콘솔이 열립니다.")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(.secondaryLabelColor))
+            }
+            
+            Button(action: {
+                if let url = URL(string: "https://console.groq.com/keys") {
+                    NSWorkspace.shared.open(url)
+                }
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showGroqKeySteps = true
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "key.fill")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("API 키 가져오기")
+                        .font(.system(size: 12, weight: .semibold))
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.orange, Color.orange.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.blue.opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.blue.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    private func groqInfoPill(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundColor(Color.blue)
+            .background(
+                Capsule()
+                    .fill(Color.blue.opacity(0.14))
+            )
+    }
+    
+    // MARK: - Security Info
+    @ViewBuilder
+    private var securityInfoSection: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 11))
+                .foregroundColor(Color(.systemGreen))
+            Text("API 키는 이 기기에만 로컬로 저장되며, Badasugi 서버로 전송되지 않습니다.")
+                .font(.system(size: 11))
+                .foregroundColor(Color(.secondaryLabelColor))
+        }
+        .padding(.top, 4)
+    }
+    
+    // MARK: - Offline Model Suggestion
+    @ViewBuilder
+    private var offlineModelSuggestionSection: some View {
+        if !isConfiguredState {
+            VStack(alignment: .leading, spacing: 8) {
+                Divider()
+                
+                HStack(spacing: 8) {
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(.secondaryLabelColor))
+                    Text("인터넷 없이 사용하고 싶다면?")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(.secondaryLabelColor))
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        // 오프라인 모델 섹션으로 안내
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("SwitchToOfflineModels"),
+                            object: nil
+                        )
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            isExpanded = false
+                        }
+                    }) {
+                        Text("오프라인 모델 보기")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.top, 4)
         }
     }
     

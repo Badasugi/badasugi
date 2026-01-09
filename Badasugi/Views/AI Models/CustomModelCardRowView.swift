@@ -1,6 +1,26 @@
 import SwiftUI
 import AppKit
 
+// MARK: - Custom Model Card Row View
+struct CustomModelCardRowView: View {
+    let model: CustomCloudModel
+    @ObservedObject var whisperState: WhisperState
+    let isCurrent: Bool
+    let onDelete: () -> Void
+    let onEdit: (CustomCloudModel) -> Void
+    let onSelect: () -> Void
+    
+    var body: some View {
+        CustomModelCardView(
+            model: model,
+            isCurrent: isCurrent,
+            setDefaultAction: onSelect,
+            deleteAction: onDelete,
+            editAction: onEdit
+        )
+    }
+}
+
 // MARK: - Custom Model Card View
 struct CustomModelCardView: View {
     let model: CustomCloudModel

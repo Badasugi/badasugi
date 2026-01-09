@@ -8,14 +8,14 @@ enum LanguageDisplayMode {
 
 struct LanguageSelectionView: View {
     @ObservedObject var whisperState: WhisperState
-    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
+    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "ko"
     // Add display mode parameter with full as the default
     var displayMode: LanguageDisplayMode = .full
     @ObservedObject var whisperPrompt: WhisperPrompt
 
     private func updateLanguage(_ language: String) {
-        // Update UI state - the UserDefaults updating is now automatic with @AppStorage
-        selectedLanguage = language
+        // 언어를 항상 한국어로 고정
+        selectedLanguage = "ko"
 
         // Force the prompt to update for the new language
         whisperPrompt.updateTranscriptionPrompt()
@@ -76,70 +76,22 @@ struct LanguageSelectionView: View {
 
             if let currentModel = whisperState.currentTranscriptionModel
             {
-                if languageSelectionDisabled() {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("언어: 자동 감지")
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("언어: 한국어")
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
 
-                        Text("현재 모델: \(currentModel.displayName)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        Text("기록 언어는 모델에 의해 자동으로 감지됩니다.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .disabled(true)
-                } else if isMultilingualModel() {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Picker("언어 선택", selection: $selectedLanguage) {
-                            ForEach(
-                                currentModel.supportedLanguages.sorted(by: {
-                                    if $0.key == "auto" { return true }
-                                    if $1.key == "auto" { return false }
-                                    return $0.value < $1.value
-                                }), id: \.key
-                            ) { key, value in
-                                Text(value).tag(key)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .onChange(of: selectedLanguage) { oldValue, newValue in
-                            updateLanguage(newValue)
-                        }
-
-                        Text("현재 모델: \(currentModel.displayName)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        Text(
-                            "이 모델은 여러 언어를 지원합니다. 특정 언어를 선택하거나 자동 감지를 사용하세요(사용 가능한 경우)"
-                        )
+                    Text("현재 모델: \(currentModel.displayName)")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    }
-                } else {
-                    // For English-only models, force set language to English
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("언어: 영어")
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
 
-                        Text("현재 모델: \(currentModel.displayName)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        Text(
-                            "이것은 영어 최적화 모델이며 영어 기록만 지원합니다."
-                        )
+                    Text("기록 언어는 한국어로 고정되어 있습니다.")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    }
-                    .onAppear {
-                        // Ensure English is set when viewing English-only model
-                        updateLanguage("en")
-                    }
+                }
+                .onAppear {
+                    // 항상 한국어로 설정
+                    updateLanguage("ko")
                 }
             } else {
                 Text("모델이 선택되지 않음")
@@ -156,54 +108,16 @@ struct LanguageSelectionView: View {
     // New compact view for menu bar
     private var menuItemView: some View {
         Group {
-            if languageSelectionDisabled() {
-                Button {
-                    // Do nothing, just showing info
-                } label: {
-                    Text("언어: 자동 감지")
-                        .foregroundColor(.secondary)
-                }
-                .disabled(true)
-            } else if isMultilingualModel() {
-                Menu {
-                    ForEach(
-                        getCurrentModelLanguages().sorted(by: {
-                            if $0.key == "auto" { return true }
-                            if $1.key == "auto" { return false }
-                            return $0.value < $1.value
-                        }), id: \.key
-                    ) { key, value in
-                        Button {
-                            updateLanguage(key)
-                        } label: {
-                            HStack {
-                                Text(value)
-                                if selectedLanguage == key {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text("언어: \(currentLanguageDisplayName())")
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 10))
-                    }
-                }
-            } else {
-                // For English-only models
-                Button {
-                    // Do nothing, just showing info
-                } label: {
-                    Text("언어: 영어(만)")
-                        .foregroundColor(.secondary)
-                }
-                .disabled(true)
-                .onAppear {
-                    // Ensure English is set for English-only models
-                    updateLanguage("en")
-                }
+            Button {
+                // Do nothing, just showing info
+            } label: {
+                Text("언어: 한국어")
+                    .foregroundColor(.secondary)
+            }
+            .disabled(true)
+            .onAppear {
+                // 항상 한국어로 설정
+                updateLanguage("ko")
             }
         }
     }

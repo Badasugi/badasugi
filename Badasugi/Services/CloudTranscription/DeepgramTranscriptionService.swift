@@ -2,7 +2,7 @@ import Foundation
 import os
 
 class DeepgramTranscriptionService {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "DeepgramService")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "DeepgramService")
     
     func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
         let config = try getAPIConfig(for: model)
@@ -57,9 +57,12 @@ class DeepgramTranscriptionService {
         let modelName = "nova-2" // 한국어는 nova-2 사용
         queryItems.append(URLQueryItem(name: "model", value: modelName))
         
+        // 자동 구두점 설정 확인
+        let isAutoPunctuationEnabled = UserDefaults.standard.object(forKey: "IsAutoPunctuationEnabled") as? Bool ?? false
+        
         queryItems.append(contentsOf: [
             URLQueryItem(name: "smart_format", value: "true"),
-            URLQueryItem(name: "punctuate", value: "true"),
+            URLQueryItem(name: "punctuate", value: isAutoPunctuationEnabled ? "true" : "false"),
             URLQueryItem(name: "paragraphs", value: "true")
         ])
         

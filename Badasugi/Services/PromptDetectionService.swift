@@ -3,7 +3,7 @@ import os
 
 class PromptDetectionService {
     private let logger = Logger(
-        subsystem: "com.prakashjoshipax.badasugi",
+        subsystem: "com.badasugi.app",
         category: "promptdetection"
     )
     

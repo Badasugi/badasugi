@@ -7,9 +7,28 @@ struct OnboardingModelDownloadView: View {
     @State private var opacity: CGFloat = 0
     @State private var isDownloading = false
     @State private var isModelSet = false
-    @State private var showTutorial = false
+    @State private var downloadError: String?
     
-    private let turboModel = PredefinedModels.models.first { $0.name == "ggml-large-v3-turbo-q5_0" } as! LocalModel
+    // Large v3 Turbo 로컬 모델을 명시적으로 고정
+    private var turboModel: LocalModel {
+        // PredefinedModels에서 명시적으로 LocalModel 타입의 ggml-large-v3-turbo를 찾음
+        guard let model = PredefinedModels.models.first(where: { 
+            $0.name == "ggml-large-v3-turbo" && $0.provider == .local
+        }) as? LocalModel else {
+            // Fallback: 직접 생성 (안정성을 위해)
+            return LocalModel(
+                name: "ggml-large-v3-turbo",
+                displayName: "Large v3 Turbo (로컬)",
+                size: "1.5 GB",
+                supportedLanguages: PredefinedModels.getLanguageDictionary(isMultilingual: true, provider: .local),
+                description: "오프라인에서도 사용 가능한 고정확도 로컬 모델. 인터넷 연결 없이 한국어 음성 인식을 제공합니다.",
+                speed: 0.75,
+                accuracy: 0.97,
+                ramUsage: 1.8
+            )
+        }
+        return model
+    }
     
     var body: some View {
         ZStack {
@@ -42,12 +61,12 @@ struct OnboardingModelDownloadView: View {
                         
                         // Title and description
                         VStack(spacing: 12) {
-                            Text("Download AI Model")
+                            Text("AI 모델 다운로드")
                                 .font(.title2)
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
                             
-                            Text("We'll download the optimized model to get you started.")
+                            Text("최적화된 모델을 다운로드하여 시작하겠습니다.")
                                 .font(.body)
                                 .foregroundColor(.white.opacity(0.7))
                                 .multilineTextAlignment(.center)
@@ -75,8 +94,8 @@ struct OnboardingModelDownloadView: View {
                         
                         // Performance indicators in a more compact layout
                         HStack(spacing: 20) {
-                            performanceIndicator(label: "Speed", value: turboModel.speed)
-                            performanceIndicator(label: "Accuracy", value: turboModel.accuracy)
+                            performanceIndicator(label: "속도", value: turboModel.speed)
+                            performanceIndicator(label: "정확도", value: turboModel.accuracy)
                             ramUsageLabel(gb: turboModel.ramUsage)
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -88,6 +107,15 @@ struct OnboardingModelDownloadView: View {
                                 downloadProgress: whisperState.downloadProgress
                             )
                             .transition(.opacity)
+                        }
+                        
+                        // Error message
+                        if let error = downloadError {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .padding(.top, 8)
+                                .transition(.opacity)
                         }
                     }
                     .padding(24)
@@ -115,10 +143,8 @@ struct OnboardingModelDownloadView: View {
                         .disabled(isDownloading)
                         
                         if !isModelSet {
-                            SkipButton(text: "Skip for now") {
-                                withAnimation {
-                                    showTutorial = true
-                                }
+                            SkipButton(text: "나중에") {
+                                hasCompletedOnboarding = true
                             }
                         }
                     }
@@ -128,11 +154,6 @@ struct OnboardingModelDownloadView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .frame(width: min(geometry.size.width * 0.8, 600))
                 .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-            }
-            
-            if showTutorial {
-                OnboardingTutorialView(hasCompletedOnboarding: $hasCompletedOnboarding)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .onAppear {
@@ -149,35 +170,84 @@ struct OnboardingModelDownloadView: View {
     }
     
     private func checkModelStatus() {
-        if whisperState.availableModels.contains(where: { $0.name == turboModel.name }) {
-            isModelSet = whisperState.currentTranscriptionModel?.name == turboModel.name
+        // 명시적으로 로컬 모델만 확인
+        if whisperState.availableModels.contains(where: { 
+            $0.name == turboModel.name 
+        }) {
+            // 현재 설정된 모델이 우리가 원하는 로컬 모델인지 확인
+            if let currentModel = whisperState.currentTranscriptionModel,
+               currentModel.name == turboModel.name,
+               currentModel.provider == .local {
+                isModelSet = true
+            }
         }
     }
     
     private func handleAction() {
+        // 에러 메시지 초기화
+        downloadError = nil
+        
         if isModelSet {
-            withAnimation {
-                showTutorial = true
-            }
+            hasCompletedOnboarding = true
         } else if whisperState.availableModels.contains(where: { $0.name == turboModel.name }) {
-            if let modelToSet = whisperState.allAvailableModels.first(where: { $0.name == turboModel.name }) {
+            // 이미 다운로드된 경우: 기본값으로 설정
+            if let modelToSet = whisperState.allAvailableModels.first(where: { 
+                $0.name == turboModel.name && $0.provider == .local
+            }) {
                 Task {
                     await whisperState.setDefaultTranscriptionModel(modelToSet)
-                    withAnimation {
-                        isModelSet = true
+                    await MainActor.run {
+                        withAnimation {
+                            isModelSet = true
+                        }
                     }
                 }
+            } else {
+                downloadError = "모델을 찾을 수 없습니다. 다시 시도해주세요."
             }
         } else {
+            // 다운로드 필요: 명시적으로 로컬 모델 다운로드
             withAnimation {
                 isDownloading = true
+                downloadError = nil
             }
+            
             Task {
+                // 명시적으로 LocalModel 타입 확인
+                guard turboModel.provider == .local else {
+                    await MainActor.run {
+                        downloadError = "로컬 모델만 다운로드할 수 있습니다."
+                        isDownloading = false
+                    }
+                    return
+                }
+                
+                // 로컬 모델 다운로드 실행
                 await whisperState.downloadModel(turboModel)
-                if let modelToSet = whisperState.allAvailableModels.first(where: { $0.name == turboModel.name }) {
-                    await whisperState.setDefaultTranscriptionModel(modelToSet)
-                    withAnimation {
-                        isModelSet = true
+                
+                // 다운로드 완료 후 모델 설정
+                await MainActor.run {
+                    // 다운로드된 모델 확인
+                    if whisperState.availableModels.contains(where: { $0.name == turboModel.name }) {
+                        if let modelToSet = whisperState.allAvailableModels.first(where: { 
+                            $0.name == turboModel.name && $0.provider == .local
+                        }) {
+                            Task {
+                                await whisperState.setDefaultTranscriptionModel(modelToSet)
+                                await MainActor.run {
+                                    withAnimation {
+                                        isModelSet = true
+                                        isDownloading = false
+                                        downloadError = nil
+                                    }
+                                }
+                            }
+                        } else {
+                            downloadError = "모델 설정에 실패했습니다. 다시 시도해주세요."
+                            isDownloading = false
+                        }
+                    } else {
+                        downloadError = "다운로드에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요."
                         isDownloading = false
                     }
                 }
@@ -187,13 +257,13 @@ struct OnboardingModelDownloadView: View {
     
     private func getButtonTitle() -> String {
         if isModelSet {
-            return "Continue"
+            return "계속하기"
         } else if isDownloading {
-            return "Downloading..."
+            return "다운로드 중..."
         } else if whisperState.availableModels.contains(where: { $0.name == turboModel.name }) {
-            return "Set as Default"
+            return "기본값으로 설정"
         } else {
-            return "Download Model"
+            return "모델 다운로드"
         }
     }
     
@@ -215,7 +285,7 @@ struct OnboardingModelDownloadView: View {
     
     private func ramUsageLabel(gb: Double) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("RAM")
+            Text("메모리")
                 .font(.caption)
                 .foregroundColor(.white.opacity(0.7))
             

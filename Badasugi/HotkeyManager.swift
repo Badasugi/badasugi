@@ -42,10 +42,9 @@ enum RecordingMode: String, CaseIterable, Identifiable {
 
 @MainActor
 class HotkeyManager: ObservableObject {
-    @Published var recordingMode: RecordingMode {
-        didSet {
-            UserDefaults.standard.set(recordingMode.rawValue, forKey: "recordingMode")
-        }
+    // Always use toggle mode
+    var recordingMode: RecordingMode {
+        return .toggle
     }
     @Published var selectedHotkey1: HotkeyOption {
         didSet {
@@ -107,6 +106,12 @@ class HotkeyManager: ObservableObject {
     private var shortcutCurrentKeyState = false
     private var lastShortcutTriggerTime: Date?
     private let shortcutCooldownInterval: TimeInterval = 0.5
+    
+    // Push-to-Talk pending stop tracking
+    // When key up happens during initial toggleMiniRecorder processing,
+    // we need to queue the stop action for after the recorder is ready
+    private var pendingPushToTalkStop = false
+    private var pushToTalkStartTask: Task<Void, Never>?
 
     enum HotkeyOption: String, CaseIterable {
         case none = "none"
@@ -152,7 +157,6 @@ class HotkeyManager: ObservableObject {
     }
     
     init(whisperState: WhisperState) {
-        self.recordingMode = RecordingMode(rawValue: UserDefaults.standard.string(forKey: "recordingMode") ?? "") ?? .toggle
         self.selectedHotkey1 = HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey1") ?? "") ?? .rightCommand
         self.selectedHotkey2 = HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey2") ?? "") ?? .none
         
@@ -269,14 +273,18 @@ class HotkeyManager: ObservableObject {
             KeyboardShortcuts.onKeyDown(for: .toggleMiniRecorder) { [weak self] in
                 Task { @MainActor in await self?.handleCustomShortcutKeyDown() }
             }
-            // Removed onKeyUp to avoid duplicate toggle
+            KeyboardShortcuts.onKeyUp(for: .toggleMiniRecorder) { [weak self] in
+                Task { @MainActor in await self?.handleCustomShortcutKeyUp() }
+            }
         }
         // Hotkey 2
         if selectedHotkey2 == .custom {
             KeyboardShortcuts.onKeyDown(for: .toggleMiniRecorder2) { [weak self] in
                 Task { @MainActor in await self?.handleCustomShortcutKeyDown() }
             }
-            // Removed onKeyUp to avoid duplicate toggle
+            KeyboardShortcuts.onKeyUp(for: .toggleMiniRecorder2) { [weak self] in
+                Task { @MainActor in await self?.handleCustomShortcutKeyUp() }
+            }
         }
     }
     
@@ -309,6 +317,9 @@ class HotkeyManager: ObservableObject {
         shortcutCurrentKeyState = false
         shortcutKeyPressStartTime = nil
         isShortcutHandsFreeMode = false
+        pendingPushToTalkStop = false
+        pushToTalkStartTask?.cancel()
+        pushToTalkStartTask = nil
     }
     
     private func handleModifierKeyEvent(_ event: NSEvent) async {
@@ -369,19 +380,42 @@ class HotkeyManager: ObservableObject {
                 if isHandsFreeMode {
                     isHandsFreeMode = false
                     guard canProcessHotkeyAction else { return }
-                    await whisperState.handleToggleMiniRecorder()
+                    await whisperState.toggleMiniRecorder()
                     return
                 }
 
                 if !whisperState.isMiniRecorderVisible {
                     guard canProcessHotkeyAction else { return }
-                    await whisperState.handleToggleMiniRecorder()
+                    await whisperState.toggleMiniRecorder()
                 }
             } else {
                 // Push-to-Talk 모드: 누르면 시작
                 if !whisperState.isMiniRecorderVisible {
                     guard canProcessHotkeyAction else { return }
-                    await whisperState.handleToggleMiniRecorder()
+                    pendingPushToTalkStop = false
+                    
+                    // Use a Task to track the start operation
+                    // so we can handle key up during the startup delay
+                    pushToTalkStartTask = Task { [weak self] in
+                        guard let self = self else { return }
+                        await self.whisperState.toggleMiniRecorder(bypassCooldown: true)
+                        
+                        // After start completes, check if key was released during startup
+                        if self.pendingPushToTalkStop {
+                            self.pendingPushToTalkStop = false
+                            // Small delay to ensure recording has actually started
+                            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                            if self.whisperState.isMiniRecorderVisible && self.canProcessHotkeyAction {
+                                await self.whisperState.toggleMiniRecorder(bypassCooldown: true)
+                                // In Push-to-Talk, hide the mini recorder immediately on release.
+                                await MainActor.run {
+                                    self.whisperState.isMiniRecorderVisible = false
+                                }
+                            }
+                        }
+                    }
+                    await pushToTalkStartTask?.value
+                    pushToTalkStartTask = nil
                 }
             }
         } else {
@@ -397,14 +431,19 @@ class HotkeyManager: ObservableObject {
                     } else {
                         // 길게 눌렀으면 종료
                         guard canProcessHotkeyAction else { return }
-                        await whisperState.handleToggleMiniRecorder()
+                        await whisperState.toggleMiniRecorder()
                     }
                 }
             } else {
                 // Push-to-Talk 모드: 떼면 무조건 종료
-                if whisperState.isMiniRecorderVisible {
+                // If start task is still running, mark that we need to stop after it completes
+                if pushToTalkStartTask != nil {
+                    pendingPushToTalkStop = true
+                } else if whisperState.isMiniRecorderVisible {
                     guard canProcessHotkeyAction else { return }
-                    await whisperState.handleToggleMiniRecorder()
+                    await whisperState.toggleMiniRecorder(bypassCooldown: true)
+                    // Hide immediately on release for Push-to-Talk
+                    whisperState.isMiniRecorderVisible = false
                 }
             }
 
@@ -427,20 +466,53 @@ class HotkeyManager: ObservableObject {
             // 토글 모드
             if isShortcutHandsFreeMode {
                 isShortcutHandsFreeMode = false
-                guard canProcessHotkeyAction else { return }
-                await whisperState.handleToggleMiniRecorder()
+                guard canProcessHotkeyAction else { 
+                    shortcutCurrentKeyState = false
+                    return 
+                }
+                await whisperState.toggleMiniRecorder()
+                shortcutCurrentKeyState = false
                 return
             }
             
             if !whisperState.isMiniRecorderVisible {
-                guard canProcessHotkeyAction else { return }
-                await whisperState.handleToggleMiniRecorder()
+                guard canProcessHotkeyAction else {
+                    shortcutCurrentKeyState = false
+                    shortcutKeyPressStartTime = nil
+                    return
+                }
+                await whisperState.toggleMiniRecorder()
             }
         } else {
             // Push-to-Talk 모드: 누르면 시작
             if !whisperState.isMiniRecorderVisible {
-                guard canProcessHotkeyAction else { return }
-                await whisperState.handleToggleMiniRecorder()
+                guard canProcessHotkeyAction else {
+                    shortcutCurrentKeyState = false
+                    shortcutKeyPressStartTime = nil
+                    return
+                }
+                
+                // Mirror modifier-key Push-to-Talk behavior: if keyUp happens during startup,
+                // queue a stop that will run as soon as the recorder becomes available.
+                pendingPushToTalkStop = false
+                pushToTalkStartTask = Task { [weak self] in
+                    guard let self = self else { return }
+                    await self.whisperState.toggleMiniRecorder(bypassCooldown: true)
+                    
+                    if self.pendingPushToTalkStop {
+                        self.pendingPushToTalkStop = false
+                        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                        if self.whisperState.isMiniRecorderVisible && self.canProcessHotkeyAction {
+                            await self.whisperState.toggleMiniRecorder(bypassCooldown: true)
+                            // Hide immediately on release for Push-to-Talk
+                            await MainActor.run {
+                                self.whisperState.isMiniRecorderVisible = false
+                            }
+                        }
+                    }
+                }
+                await pushToTalkStartTask?.value
+                pushToTalkStartTask = nil
             }
         }
     }
@@ -460,14 +532,18 @@ class HotkeyManager: ObservableObject {
                     isShortcutHandsFreeMode = true
                 } else {
                     guard canProcessHotkeyAction else { return }
-                    await whisperState.handleToggleMiniRecorder()
+                    await whisperState.toggleMiniRecorder()
                 }
             }
         } else {
             // Push-to-Talk 모드: 떼면 무조건 종료
-            if whisperState.isMiniRecorderVisible {
+            if pushToTalkStartTask != nil {
+                pendingPushToTalkStop = true
+            } else if whisperState.isMiniRecorderVisible {
                 guard canProcessHotkeyAction else { return }
-                await whisperState.handleToggleMiniRecorder()
+                await whisperState.toggleMiniRecorder(bypassCooldown: true)
+                // Hide immediately on release for Push-to-Talk
+                whisperState.isMiniRecorderVisible = false
             }
         }
         

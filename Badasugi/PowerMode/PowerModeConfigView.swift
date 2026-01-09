@@ -271,37 +271,15 @@ struct ConfigurationView: View {
                     }
                 }
 
-                if languageSelectionDisabled() {
-                    LabeledContent("Language") {
-                        Text("Autodetected")
-                            .foregroundColor(.secondary)
-                    }
-                } else if let selectedModel = effectiveModelName,
-                          let modelInfo = whisperState.allAvailableModels.first(where: { $0.name == selectedModel }),
-                          modelInfo.isMultilingualModel {
-                    let languageBinding = Binding<String?>(
-                        get: { selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto" },
-                        set: { selectedLanguage = $0 }
-                    )
-
-                    Picker("Language", selection: languageBinding) {
-                        ForEach(modelInfo.supportedLanguages.sorted(by: {
-                            if $0.key == "auto" { return true }
-                            if $1.key == "auto" { return false }
-                            return $0.value < $1.value
-                        }), id: \.key) { key, value in
-                            Text(value).tag(key as String?)
-                        }
-                    }
-                } else if let selectedModel = effectiveModelName,
-                          let modelInfo = whisperState.allAvailableModels.first(where: { $0.name == selectedModel }),
-                          !modelInfo.isMultilingualModel {
-                    EmptyView()
-                        .onAppear {
-                            if selectedLanguage == nil {
-                                selectedLanguage = "en"
-                            }
-                        }
+                // 언어는 항상 한국어로 고정
+                LabeledContent("Language") {
+                    Text("한국어")
+                        .foregroundColor(.secondary)
+                }
+                .onAppear {
+                    // 언어를 항상 한국어로 설정
+                    selectedLanguage = "ko"
+                    UserDefaults.standard.set("ko", forKey: "SelectedLanguage")
                 }
             }
 
@@ -560,7 +538,7 @@ struct ConfigurationView: View {
                     isAIEnhancementEnabled: isAIEnhancementEnabled,
                     selectedPrompt: selectedPromptId?.uuidString,
                     selectedTranscriptionModelName: selectedTranscriptionModelName,
-                    selectedLanguage: selectedLanguage,
+                    selectedLanguage: "ko", // 항상 한국어로 고정
                     useScreenCapture: useScreenCapture,
                     selectedAIProvider: selectedAIProvider,
                     selectedAIModel: selectedAIModel,
@@ -575,7 +553,7 @@ struct ConfigurationView: View {
             updatedConfig.isAIEnhancementEnabled = isAIEnhancementEnabled
             updatedConfig.selectedPrompt = selectedPromptId?.uuidString
             updatedConfig.selectedTranscriptionModelName = selectedTranscriptionModelName
-            updatedConfig.selectedLanguage = selectedLanguage
+            updatedConfig.selectedLanguage = "ko" // 항상 한국어로 고정
             updatedConfig.appConfigs = selectedAppConfigs.isEmpty ? nil : selectedAppConfigs
             updatedConfig.urlConfigs = websiteConfigs.isEmpty ? nil : websiteConfigs
             updatedConfig.useScreenCapture = useScreenCapture

@@ -49,7 +49,7 @@ class PowerModeSessionManager {
                 selectedPromptId: enhancementService.selectedPromptId?.uuidString,
                 selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
                 selectedAIModel: enhancementService.getAIService()?.currentModel,
-                selectedLanguage: UserDefaults.standard.string(forKey: "SelectedLanguage"),
+                selectedLanguage: "ko", // 항상 한국어로 고정
                 transcriptionModelName: whisperState.currentTranscriptionModel?.name
             )
 
@@ -126,10 +126,9 @@ class PowerModeSessionManager {
                 }
             }
 
-            if let language = config.selectedLanguage {
-                UserDefaults.standard.set(language, forKey: "SelectedLanguage")
-                NotificationCenter.default.post(name: .languageDidChange, object: nil)
-            }
+            // 언어를 항상 한국어로 고정
+            UserDefaults.standard.set("ko", forKey: "SelectedLanguage")
+            NotificationCenter.default.post(name: .languageDidChange, object: nil)
         }
 
         if let whisperState = whisperState,
@@ -161,10 +160,9 @@ class PowerModeSessionManager {
                 }
             }
 
-            if let language = state.selectedLanguage {
-                UserDefaults.standard.set(language, forKey: "SelectedLanguage")
-                NotificationCenter.default.post(name: .languageDidChange, object: nil)
-            }
+            // 언어를 항상 한국어로 고정
+            UserDefaults.standard.set("ko", forKey: "SelectedLanguage")
+            NotificationCenter.default.post(name: .languageDidChange, object: nil)
         }
 
         if let whisperState = whisperState,

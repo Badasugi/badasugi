@@ -5,7 +5,6 @@ import LaunchAtLogin
 import AVFoundation
 
 struct SettingsView: View {
-    @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @EnvironmentObject private var menuBarManager: MenuBarManager
     @EnvironmentObject private var hotkeyManager: HotkeyManager
     @EnvironmentObject private var whisperState: WhisperState
@@ -15,14 +14,13 @@ struct SettingsView: View {
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
-    @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
-    @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = false
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @State private var showResetOnboardingAlert = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var isCustomCancelEnabled = false
     @State private var expandedSections: Set<ExpandableSection> = []
+    @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
 
     
     var body: some View {
@@ -70,77 +68,44 @@ struct SettingsView: View {
                 }
 
                 SettingsSection(
-                    icon: "mic.circle.fill",
-                    title: "녹음 방식",
-                    subtitle: "단축키 동작 방식 선택"
-                ) {
-                    VStack(spacing: 0) {
-                        ForEach(Array(RecordingMode.allCases.enumerated()), id: \.element.id) { index, mode in
-                            OptionListRow<RecordingMode>(
-                                title: mode.displayName,
-                                description: mode.description,
-                                icon: mode.icon,
-                                isSelected: hotkeyManager.recordingMode == mode,
-                                action: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        hotkeyManager.recordingMode = mode
-                                    }
-                                }
-                            )
-                            
-                            if index < RecordingMode.allCases.count - 1 {
-                                Divider()
-                                    .padding(.leading, 52)
-                            }
-                        }
-                    }
-                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                    .cornerRadius(10)
-                }
-
-
-                SettingsSection(
                     icon: "gearshape.fill",
                     title: "일반",
-                    subtitle: "모양, 시작 및 업데이트"
+                    subtitle: "모양 및 시작"
                 ) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Toggle("독 아이콘 숨기기 (메뉴바만)", isOn: $menuBarManager.isMenuBarOnly)
-                            .toggleStyle(.switch)
-                        
-                        LaunchAtLogin.Toggle()
-                            .toggleStyle(.switch)
-
-                        Toggle("자동 업데이트 확인 활성화", isOn: $autoUpdateCheck)
-                            .toggleStyle(.switch)
-                            .onChange(of: autoUpdateCheck) { _, newValue in
-                                updaterViewModel.toggleAutoUpdates(newValue)
+                    VStack(alignment: .leading, spacing: 16) {
+                        // 시작 설정 그룹
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("시작 설정")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                Toggle("독 아이콘 숨기기 (메뉴바만)", isOn: $menuBarManager.isMenuBarOnly)
+                                    .toggleStyle(.switch)
+                                
+                                Toggle("로그인 시 시작", isOn: $launchAtLoginEnabled)
+                                    .toggleStyle(.switch)
+                                    .onChange(of: launchAtLoginEnabled) { _, newValue in
+                                        LaunchAtLogin.isEnabled = newValue
+                                    }
                             }
-                        
-                        Toggle("앱 공지사항 표시", isOn: $enableAnnouncements)
-                            .toggleStyle(.switch)
-                            .onChange(of: enableAnnouncements) { _, newValue in
-                                if newValue {
-                                    AnnouncementsService.shared.start()
-                                } else {
-                                    AnnouncementsService.shared.stop()
-                                }
-                            }
-                        
-                        Button("지금 업데이트 확인") {
-                            updaterViewModel.checkForUpdates()
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                        .disabled(!updaterViewModel.canCheckForUpdates)
                         
                         Divider()
-
-                        Button("온보딩 재설정") {
-                            showResetOnboardingAlert = true
+                            .padding(.vertical, 4)
+                        
+                        // 기타 설정
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("기타")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            
+                            Button("온보딩 재설정") {
+                                showResetOnboardingAlert = true
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.regular)
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
                     }
                 }
 
@@ -159,6 +124,7 @@ struct SettingsView: View {
         .background(Color(NSColor.controlBackgroundColor))
         .onAppear {
             isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
+            launchAtLoginEnabled = LaunchAtLogin.isEnabled
         }
         .alert("온보딩 재설정", isPresented: $showResetOnboardingAlert) {
             Button("취소", role: .cancel) { }

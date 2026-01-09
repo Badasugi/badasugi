@@ -13,7 +13,7 @@ class AudioTranscriptionService: ObservableObject {
     private let enhancementService: AIEnhancementService?
     private let whisperState: WhisperState
     private let promptDetectionService = PromptDetectionService()
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "AudioTranscriptionService")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "AudioTranscriptionService")
     private let serviceRegistry: TranscriptionServiceRegistry
     
     enum TranscriptionError: Error {
@@ -45,6 +45,10 @@ class AudioTranscriptionService: ObservableObject {
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
             text = TranscriptionOutputFilter.filter(text)
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if UserDefaults.standard.object(forKey: "IsAutoPunctuationEnabled") as? Bool ?? false {
+                text = AutoPunctuationService.apply(to: text)
+            }
 
             let powerModeManager = PowerModeManager.shared
             let activePowerModeConfig = powerModeManager.currentActiveConfiguration

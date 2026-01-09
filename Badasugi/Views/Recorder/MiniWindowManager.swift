@@ -72,12 +72,18 @@ class MiniWindowManager: ObservableObject {
     private func initializeWindow(screen: NSScreen) {
         deinitializeWindow()
         
+        // Safety check: enhancementService must be available
+        guard let enhancementService = whisperState.enhancementService else {
+            print("⚠️ MiniWindowManager: enhancementService is nil, cannot show recorder")
+            return
+        }
+        
         let metrics = MiniRecorderPanel.calculateWindowMetrics()
         let panel = MiniRecorderPanel(contentRect: metrics)
         
         let miniRecorderView = MiniRecorderView(whisperState: whisperState, recorder: recorder)
             .environmentObject(self)
-            .environmentObject(whisperState.enhancementService!)
+            .environmentObject(enhancementService)
         
         let hostingController = NSHostingController(rootView: miniRecorderView)
         panel.contentView = hostingController.view

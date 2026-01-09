@@ -190,32 +190,30 @@ struct LicenseManagementView: View {
             
             Divider().padding(.leading, 40)
             
-            // Buy Lifetime License
+            // Buy Lifetime License (Disabled - purchase page not ready)
             ListRow(
                 icon: "cart.fill",
                 iconColor: .mint,
-                title: "평생 라이선스 구매",
-                subtitle: "한 번 구매, 평생 소유",
+                title: "홈페이지 방문",
+                subtitle: "받아쓰기 공식 웹사이트",
                 showExternalLink: true
             ) {
-                if let url = URL(string: "https://tryvoiceink.com/buy") {
+                if let url = URL(string: "https://www.badasugi.com") {
                     NSWorkspace.shared.open(url)
                 }
             }
             
             Divider().padding(.leading, 40)
             
-            // License Portal
+            // Email Support (Replaced Polar portal)
             ListRow(
-                icon: "person.crop.circle.fill",
+                icon: "envelope.fill",
                 iconColor: .mint,
-                title: "라이선스 관리 포털",
-                subtitle: "기기 및 라이선스 관리",
-                showExternalLink: true
+                title: "이메일 지원",
+                subtitle: "문의 및 지원 요청",
+                showExternalLink: false
             ) {
-                if let url = URL(string: "https://polar.sh/beingpax/portal/request") {
-                    NSWorkspace.shared.open(url)
-                }
+                EmailSupport.openSupportEmail()
             }
         }
     }
@@ -251,12 +249,20 @@ struct LicenseManagementView: View {
                 Divider().padding(.leading, 40)
             }
             
-            // Quick Links (Collapsed)
-            quickLinksSection
+            // 이메일 지원
+            ListRow(
+                icon: "envelope",
+                iconColor: .secondary,
+                title: "이메일 지원",
+                subtitle: nil,
+                showChevron: false
+            ) {
+                EmailSupport.openSupportEmail()
+            }
             
             Divider().padding(.leading, 40)
             
-            // Deactivate License
+            // 이 Mac에서 비활성화
             ListRow(
                 icon: "xmark.circle.fill",
                 iconColor: .red.opacity(0.8),
@@ -268,81 +274,6 @@ struct LicenseManagementView: View {
                 licenseViewModel.removeLicense()
             }
         }
-    }
-    
-    @State private var showQuickLinks = false
-    
-    private var quickLinksSection: some View {
-        VStack(spacing: 0) {
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    showQuickLinks.toggle()
-                }
-            }) {
-                HStack(spacing: 12) {
-                    Image(systemName: "link")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .frame(width: 24)
-                    
-                    Text("빠른 링크")
-                        .font(.system(size: 13, weight: .medium))
-                    
-                    Spacer()
-                    
-                    Image(systemName: showQuickLinks ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 4)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            
-            if showQuickLinks {
-                VStack(spacing: 0) {
-                    quickLinkRow(icon: "list.bullet.clipboard", title: "변경 사항", url: "https://github.com/Beingpax/VoiceInk/releases")
-                    Divider().padding(.leading, 40)
-                    quickLinkRow(icon: "bubble.left.and.bubble.right", title: "Discord 커뮤니티", url: "https://discord.gg/xryDy57nYD")
-                    Divider().padding(.leading, 40)
-                    quickLinkRow(icon: "envelope", title: "이메일 지원", action: { EmailSupport.openSupportEmail() })
-                    Divider().padding(.leading, 40)
-                    quickLinkRow(icon: "book", title: "문서", url: "https://tryvoiceink.com/docs")
-                }
-                .padding(.leading, 36)
-            }
-        }
-    }
-    
-    private func quickLinkRow(icon: String, title: String, url: String? = nil, action: (() -> Void)? = nil) -> some View {
-        Button(action: {
-            if let action = action {
-                action()
-            } else if let urlString = url, let link = URL(string: urlString) {
-                NSWorkspace.shared.open(link)
-            }
-        }) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .frame(width: 20)
-                
-                Text(title)
-                    .font(.system(size: 12))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -438,9 +369,19 @@ struct LicenseInputSheet: View {
                     .textCase(.uppercase)
                 
                 if let message = licenseViewModel.validationMessage {
-                    Text(message)
-                        .font(.caption)
-                        .foregroundColor(message.contains("success") || message.contains("성공") ? .green : .red)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(licenseViewModel.licenseState == .licensed ? .green : .red)
+                        
+                        // Show device usage info if available
+                        if licenseViewModel.licenseState == .licensed,
+                           licenseViewModel.maxDevices > 0 {
+                            Text("기기 사용: \(licenseViewModel.activeDevices) / \(licenseViewModel.maxDevices)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
             }
             

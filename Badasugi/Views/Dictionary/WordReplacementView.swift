@@ -290,7 +290,7 @@ struct WordReplacementInfoPopover: View {
                         Text("교체:")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text("https://tryvoiceink.com")
+                        Text("https://www.badasugi.com")
                             .font(.callout)
                     }
                 }

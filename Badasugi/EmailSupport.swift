@@ -4,36 +4,27 @@ import AppKit
 
 struct EmailSupport {
     static func generateSupportEmailURL() -> URL? {
-        let subject = "받아쓰기 Support Request"
-        let systemInfo = SystemInfoService.shared.getSystemInfoString()
-
+        let to = "badasugi.app@gmail.com"
+        let subject = "[받아쓰기] 지원 요청"
+        
         let body = """
+안녕하세요. 받아쓰기 지원 요청드립니다.
 
-        ------------------------
-        ✨ **SCREEN RECORDING HIGHLY RECOMMENDED** ✨
-        ▶️ Create a quick screen recording showing the issue!
-        ▶️ It helps me understand and fix the problem much faster.
-
-        📝 ISSUE DETAILS:
-        - What steps did you take before the issue occurred?
-        - What did you expect to happen?
-        - What actually happened instead?
+- 라이선스 키:
+- 기기 이름:
+- macOS 버전:
+- 문제 설명:
 
 
-        ## 📋 COMMON ISSUES:
-        Check out our Common Issues page before sending an email: https://tryvoiceink.com/common-issues
-        ------------------------
-
-        System Information:
-        \(systemInfo)
-
-
-        """
+"""
         
-        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        // URL 인코딩 처리 (한글 및 특수문자 포함)
+        guard let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return nil
+        }
         
-        return URL(string: "mailto:prakashjoshipax@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)")
+        return URL(string: "mailto:\(to)?subject=\(encodedSubject)&body=\(encodedBody)")
     }
     
     static func openSupportEmail() {
@@ -41,6 +32,4 @@ struct EmailSupport {
             NSWorkspace.shared.open(emailURL)
         }
     }
-    
-    
 }

@@ -1,5 +1,4 @@
 import Foundation
-import IOKit
 
 /// Simple utility to obfuscate sensitive data stored in UserDefaults
 struct Obfuscator {
@@ -27,15 +26,11 @@ struct Obfuscator {
     }
     
     /// Gets a device-specific identifier to use as salt
-    /// Uses the same logic as PolarService for consistency
+    /// Uses only UUID stored in UserDefaults for stability
     static func getDeviceIdentifier() -> String {
-        // Try to get Mac serial number first
-        if let serialNumber = getMacSerialNumber() {
-            return serialNumber
-        }
-        
-        // Fallback to stored UUID
         let defaults = UserDefaults.standard
+        
+        // Return stored UUID if exists
         if let storedId = defaults.string(forKey: "BadasugiDeviceIdentifier") {
             return storedId
         }
@@ -44,19 +39,5 @@ struct Obfuscator {
         let newId = UUID().uuidString
         defaults.set(newId, forKey: "BadasugiDeviceIdentifier")
         return newId
-    }
-    
-    /// Try to get the Mac serial number
-    private static func getMacSerialNumber() -> String? {
-        let platformExpert = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
-        if platformExpert == 0 { return nil }
-        
-        defer { IOObjectRelease(platformExpert) }
-        
-        if let serialNumber = IORegistryEntryCreateCFProperty(platformExpert, "IOPlatformSerialNumber" as CFString, kCFAllocatorDefault, 0) {
-            return (serialNumber.takeRetainedValue() as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        
-        return nil
     }
 }

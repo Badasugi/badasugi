@@ -8,7 +8,7 @@ import os
 /// without recording to a file.
 @MainActor
 class DashboardAudioInputManager: ObservableObject {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "DashboardAudioInputManager")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "DashboardAudioInputManager")
     
     // MARK: - Published Properties
     @Published var audioLevel: Double = 0.0

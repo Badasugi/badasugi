@@ -1,106 +1,141 @@
-<div align="center">
-  <img src="VoiceInk/Assets.xcassets/AppIcon.appiconset/256-mac.png" width="180" height="180" />
-  <h1>받아쓰기 (Badasugi)</h1>
-  <p>Voice to text app for macOS to transcribe what you say to text almost instantly</p>
+# Badasugi (받아쓰기)
 
-  [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-  ![Platform](https://img.shields.io/badge/platform-macOS%2014.0%2B-brightgreen)
-  [![GitHub release (latest by date)](https://img.shields.io/github/v/release/Beingpax/VoiceInk)](https://github.com/Beingpax/VoiceInk/releases)
-  ![GitHub all releases](https://img.shields.io/github/downloads/Beingpax/VoiceInk/total)
-  ![GitHub stars](https://img.shields.io/github/stars/Beingpax/VoiceInk?style=social)
-  <p>
-    <a href="https://tryvoiceink.com">Website</a> •
-    <a href="https://www.youtube.com/@tryvoiceink">YouTube</a>
-  </p>
+Badasugi is a macOS application for voice transcription and dictation, designed to convert speech to text with support for multiple transcription models and AI-powered text enhancement.
 
-  <a href="https://tryvoiceink.com">
-    <img src="https://img.shields.io/badge/Download%20Now-Latest%20Version-blue?style=for-the-badge&logo=apple" alt="Download 받아쓰기" width="250"/>
-  </a>
-</div>
+## Overview
 
----
+Badasugi provides real-time and offline voice transcription capabilities for macOS. The application supports multiple transcription models including local Whisper models, cloud-based services, and native Apple transcription. It includes features for text enhancement, context-aware configurations, and integration with macOS accessibility features.
 
-받아쓰기(Badasugi)는 당신이 말하는 것을 거의 즉시 텍스트로 변환하는 네이티브 macOS 애플리케이션입니다. 모든 정보와 앱 다운로드는 [여기](https://tryvoiceink.com)에서 확인할 수 있습니다. 
+## Open Source Notice
 
-![받아쓰기 Mac App](https://github.com/user-attachments/assets/12367379-83e7-48a6-b52c-4488a6a04bba)
+This software is based on the open-source project VoiceInk and is licensed under the GNU General Public License v3 (GPL v3).
 
-After dedicating the past 5 months to developing this app, I've decided to open source it for the greater good. 
+The source code of Badasugi is available under the GPL v3 license, which grants users the right to use, modify, and distribute the software in accordance with the terms of that license.
 
-My goal is to make it **the most efficient and privacy-focused voice-to-text solution for macOS** that is a joy to use. While the source code is now open for experienced developers to build and contribute, purchasing a license helps support continued development and gives you access to automatic updates, priority support, and upcoming features.
+## Commercial Distribution
+
+While the source code is available under GPL v3, Badasugi also offers commercial distribution channels:
+
+- **Pre-built binaries**: Official releases distributed through the Badasugi website
+- **Automatic updates**: Update services provided for licensed installations
+- **License management**: Commercial license activation and validation services
+
+These commercial services are separate from the GPL-licensed source code. Users who obtain the software through commercial channels receive the same GPL v3 rights to the source code, but the commercial distribution, updates, and license services are provided as additional services.
 
 ## Features
 
-- 🎙️ **Accurate Transcription**: Local AI models that transcribe your voice to text with 99% accuracy, almost instantly
-- 🔒 **Privacy First**: 100% offline processing ensures your data never leaves your device
-- ⚡ **Power Mode**: Intelligent app detection automatically applies your perfect pre-configured settings based on the app/ URL you're on
-- 🧠 **Context Aware**: Smart AI that understands your screen content and adapts to the context
-- 🎯 **Global Shortcuts**: Configurable keyboard shortcuts for quick recording and push-to-talk functionality
-- 📝 **Personal Dictionary**: Train the AI to understand your unique terminology with custom words, industry terms, and smart text replacements
-- 🔄 **Smart Modes**: Instantly switch between AI-powered modes optimized for different writing styles and contexts
-- 🤖 **AI Assistant**: Built-in voice assistant mode for a quick chatGPT like conversational assistant
+- **Multiple Transcription Models**: Support for local Whisper models, cloud-based transcription services, and native Apple transcription
+- **Real-time Recording**: Record audio from microphone input with hotkey support
+- **Audio File Processing**: Transcribe audio files in multiple formats (WAV, MP3, M4A, AIFF, MP4, MOV, AAC, FLAC, CAF)
+- **AI Text Enhancement**: Optional AI-powered text improvement and correction
+- **Power Modes**: Context-aware configurations that automatically adjust settings based on active applications
+- **Menu Bar Integration**: Quick access through the macOS menu bar
+- **Keyboard Shortcuts**: Customizable hotkeys for recording and playback control
+- **Transcription History**: View and manage past transcriptions
+- **Multiple Language Support**: Support for multilingual transcription models
 
 ## Get Started
 
-### Download
-무료 체험판이 포함된 최신 버전을 [tryvoiceink.com](https://tryvoiceink.com)에서 받으세요. 구매는 받아쓰기를 풀타임으로 개발하고 새로운 기능과 업데이트로 지속적으로 개선하는 데 도움이 됩니다.
+### Download from Website
 
-#### Homebrew
-또는 `brew`를 통해 받아쓰기를 설치할 수 있습니다:
+Visit [https://www.badasugi.com](https://www.badasugi.com) to download the latest release.
 
-```shell
+### Install via Homebrew
+
+```bash
 brew install --cask voiceink
 ```
 
-### Build from Source
-오픈소스 프로젝트로서 [BUILDING.md](BUILDING.md)의 지침에 따라 받아쓰기를 직접 빌드할 수 있습니다. 그러나 컴파일된 버전에는 자동 업데이트, Discord 및 이메일을 통한 우선 지원과 같은 추가 혜택이 포함되며 지속적인 개발 자금 지원에 도움이 됩니다.
+## Build from Source
+
+### Prerequisites
+
+- macOS 14.0 or later
+- Xcode (latest version recommended)
+- Swift (latest version recommended)
+- Git
+
+### Quick Build with Makefile
+
+The recommended way to build Badasugi is using the included Makefile:
+
+```bash
+# Clone the repository
+git clone https://github.com/Badasugi/badasugi.git
+cd badasugi
+
+# Build everything (includes whisper framework setup)
+make all
+
+# Or for development (build and run)
+make dev
+```
+
+### Available Makefile Commands
+
+- `make check` or `make healthcheck` - Verify all required tools are installed
+- `make whisper` - Clone and build whisper.cpp XCFramework automatically
+- `make setup` - Prepare the whisper framework for linking
+- `make build` - Build the Badasugi Xcode project
+- `make run` - Launch the built Badasugi app
+- `make dev` - Build and run (ideal for development workflow)
+- `make all` - Complete build process (default)
+- `make clean` - Remove build artifacts and dependencies
+- `make help` - Show all available commands
+
+### Manual Build Process
+
+1. Clone the repository:
+```bash
+git clone https://github.com/Badasugi/badasugi.git
+cd badasugi
+```
+
+2. Build whisper.cpp framework:
+```bash
+git clone https://github.com/ggerganov/whisper.cpp.git
+cd whisper.cpp
+./build-xcframework.sh
+```
+
+3. Add the whisper.xcframework to the Xcode project:
+   - Drag and drop `whisper.cpp/build-apple/whisper.xcframework` into the project navigator, or
+   - Add it manually in the "Frameworks, Libraries, and Embedded Content" section of project settings
+
+4. Build and run in Xcode:
+   - Build the project using Cmd+B or Product > Build
+   - Run the project using Cmd+R or Product > Run
+
+For detailed build instructions, see [BUILDING.md](BUILDING.md).
 
 ## Requirements
 
-- macOS 14.0 or later
-
-## Documentation
-
-- [Building from Source](BUILDING.md) - Detailed instructions for building the project
-- [Contributing Guidelines](CONTRIBUTING.md) - 받아쓰기에 기여하는 방법
-- [Code of Conduct](CODE_OF_CONDUCT.md) - Our community standards
-
-## Contributing
-
-We welcome contributions! However, please note that all contributions should align with the project's goals and vision. Before starting work on any feature or fix:
-
-1. Read our [Contributing Guidelines](CONTRIBUTING.md)
-2. Open an issue to discuss your proposed changes
-3. Wait for maintainer feedback
-
-For build instructions, see our [Building Guide](BUILDING.md).
-
-## License
-
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+- **Operating System**: macOS 14.0 or later
+- **Hardware**: Mac computer with microphone access
+- **Permissions**: 
+  - Microphone access (required for recording)
+  - Accessibility permissions (for text insertion features)
+  - Screen recording permissions (for context-aware features)
 
 ## Support
 
-If you encounter any issues or have questions, please:
-1. Check the existing issues in the GitHub repository
-2. Create a new issue if your problem isn't already reported
-3. Provide as much detail as possible about your environment and the problem
+For support, bug reports, or feature requests:
+
+- **Email**: badasugi.app@gmail.com
+- **Website**: [https://www.badasugi.com](https://www.badasugi.com)
+
+## License
+
+The source code of Badasugi is licensed under the GNU General Public License v3 (GPL v3). See the LICENSE file for the full license text.
 
 ## Acknowledgments
 
-### Core Technology
-- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) - High-performance inference of OpenAI's Whisper model
-- [FluidAudio](https://github.com/FluidInference/FluidAudio) - Used for Parakeet model implementation
+Badasugi uses the following open-source dependencies:
 
-### Essential Dependencies
-- [Sparkle](https://github.com/sparkle-project/Sparkle) - 받아쓰기를 최신 상태로 유지
-- [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) - User-customizable keyboard shortcuts
-- [LaunchAtLogin](https://github.com/sindresorhus/LaunchAtLogin) - Launch at login functionality
-- [MediaRemoteAdapter](https://github.com/ejbills/mediaremote-adapter) - Media playback control during recording
-- [Zip](https://github.com/marmelroy/Zip) - File compression and decompression utilities
-- [SelectedTextKit](https://github.com/tisfeng/SelectedTextKit) - A modern macOS library for getting selected text
-- [Swift Atomics](https://github.com/apple/swift-atomics) - Low-level atomic operations for thread-safe concurrent programming
-
+- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) - High-performance inference of OpenAI's Whisper automatic speech recognition model
+- [Sparkle](https://sparkle-project.org/) - Software update framework for macOS
 
 ---
 
-Made with ❤️ by Pax
+© 2026 Badasugi (받아쓰기)
+

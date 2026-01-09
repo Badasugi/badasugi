@@ -11,19 +11,19 @@ struct HelpAndResourcesSection: View {
                 resourceLink(
                     icon: "sparkles",
                     title: "추천 모델",
-                    url: "https://tryvoiceink.com/recommended-models"
+                    url: "https://www.badasugi.com"
                 )
 
                 resourceLink(
                     icon: "video.fill",
                     title: "YouTube 동영상 및 가이드",
-                    url: "https://www.youtube.com/@tryvoiceink/videos"
+                    url: "https://www.youtube.com/@badasugi"
                 )
 
                 resourceLink(
                     icon: "book.fill",
                     title: "문서",
-                    url: "https://tryvoiceink.com/docs"
+                    url: "https://www.badasugi.com"
                 )
                 
                 resourceLink(

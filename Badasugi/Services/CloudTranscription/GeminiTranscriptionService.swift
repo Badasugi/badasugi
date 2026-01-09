@@ -2,7 +2,7 @@ import Foundation
 import os
 
 class GeminiTranscriptionService {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "GeminiService")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "GeminiService")
     
     func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
         let config = try getAPIConfig(for: model)
@@ -22,11 +22,12 @@ class GeminiTranscriptionService {
         
         let base64AudioData = audioData.base64EncodedString()
         
+        // 한국어 전용 앱: 프롬프트에 한국어 전사 명시
         let requestBody = GeminiRequest(
             contents: [
                 GeminiContent(
                     parts: [
-                        .text(GeminiTextPart(text: "Please transcribe this audio file. Provide only the transcribed text.")),
+                        .text(GeminiTextPart(text: "이 오디오 파일을 한국어로 전사해 주세요. 전사된 텍스트만 제공해 주세요. (Please transcribe this audio file in Korean. Provide only the transcribed text.)")),
                         .audio(GeminiAudioPart(
                             inlineData: GeminiInlineData(
                                 mimeType: "audio/wav",

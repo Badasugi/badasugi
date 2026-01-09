@@ -56,82 +56,88 @@ struct ContentView: View {
             VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
                 .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // 상단 헤더 - More opaque material
-                HStack(spacing: 12) {
-                    // 앱 로고 및 이름
-                    HStack(spacing: 8) {
-                        Image("BadasugiLogoMac")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 32, height: 32)
-                            .cornerRadius(6)
+            if licenseViewModel.isLocked {
+                // Show trial expired screen
+                TrialExpiredView(licenseViewModel: licenseViewModel)
+            } else {
+                VStack(spacing: 0) {
+                    // 상단 헤더 - More opaque material
+                    HStack(spacing: 12) {
+                        // 앱 로고 및 이름
+                        HStack(spacing: 8) {
+                            Image("BadasugiLogoMac")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 32, height: 32)
+                                .cornerRadius(6)
 
-                        Text("받아쓰기")
-                            .font(.system(size: 18, weight: .bold))
+                            Text("받아쓰기")
+                                .font(.system(size: 18, weight: .bold))
 
-                        if case .licensed = licenseViewModel.licenseState {
-                            Text("PRO")
-                                .font(.system(size: 9, weight: .heavy))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(Color.accentColor)
-                                .cornerRadius(4)
-                        }
-                    }
-                    .padding(.leading, 20)
-                    
-                    Spacer()
-                }
-                .padding(.vertical, 12)
-                .background(.regularMaterial)
-                
-                Divider()
-                    .opacity(0.5)
-                
-                // 상단 탭 바 - Slightly transparent
-                GeometryReader { geometry in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 0) {
-                            ForEach(visibleViewTypes) { viewType in
-                                TopTabButton(
-                                    viewType: viewType,
-                                    isSelected: selectedView == viewType,
-                                    action: {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
-                                            selectedView = viewType
-                                        }
-                                    }
-                                )
-                                .frame(maxWidth: .infinity)
+                            if case .licensed = licenseViewModel.licenseState {
+                                Text("정식")
+                                    .font(.system(size: 9, weight: .heavy))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.accentColor)
+                                    .cornerRadius(4)
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .frame(minWidth: geometry.size.width)
+                        .padding(.leading, 20)
+                        
+                        Spacer()
                     }
-                }
-                .frame(height: 50)
-                .background(.thinMaterial)
-                
-                Divider()
-                    .opacity(0.5)
-                
-                // 메인 컨텐츠 - Most transparent for spacious feel
-                if let selectedView = selectedView {
-                    detailView(for: selectedView)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(.ultraThinMaterial)
-                } else {
-                    Text("항목을 선택하세요")
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(.ultraThinMaterial)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial)
+                    
+                    Divider()
+                        .opacity(0.5)
+                    
+                    // 상단 탭 바 - Slightly transparent
+                    GeometryReader { geometry in
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 0) {
+                                ForEach(visibleViewTypes) { viewType in
+                                    TopTabButton(
+                                        viewType: viewType,
+                                        isSelected: selectedView == viewType,
+                                        action: {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                selectedView = viewType
+                                            }
+                                        }
+                                    )
+                                    .frame(maxWidth: .infinity)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .frame(minWidth: geometry.size.width)
+                        }
+                    }
+                    .frame(height: 50)
+                    .background(.thinMaterial)
+                    
+                    Divider()
+                        .opacity(0.5)
+                    
+                    // 메인 컨텐츠 - Most transparent for spacious feel
+                    if let selectedView = selectedView {
+                        detailView(for: selectedView)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(.ultraThinMaterial)
+                    } else {
+                        Text("항목을 선택하세요")
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(.ultraThinMaterial)
+                    }
                 }
             }
         }
         .frame(width: 950)
         .frame(minHeight: 730)
+        .environmentObject(licenseViewModel)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToDestination)) { notification in
             if let destination = notification.userInfo?["destination"] as? String {
                 // Route to Settings tab and let SettingsContainerView handle subsection navigation

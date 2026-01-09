@@ -1,18 +1,20 @@
 import Foundation
 
 // Enum to differentiate between model providers
+// 한국어 전용 앱을 위해 간소화됨
 enum ModelProvider: String, Codable, Hashable, CaseIterable {
-    case local = "Local"
+    case local = "Local"           // 로컬 Whisper 모델
+    case groq = "Groq"             // Groq 클라우드 모델
+    case nativeApple = "Native Apple"  // macOS 네이티브
+    case custom = "Custom"         // 사용자 지정 모델 (호환성 유지)
+    
+    // 더 이상 사용되지 않는 provider (하위 호환성을 위해 유지)
     case parakeet = "Parakeet"
-    case groq = "Groq"
     case elevenLabs = "ElevenLabs"
     case deepgram = "Deepgram"
     case mistral = "Mistral"
     case gemini = "Gemini"
     case soniox = "Soniox"
-    case custom = "Custom"
-    case nativeApple = "Native Apple"
-    // Future providers can be added here
 }
 
 // A unified protocol for any transcription model

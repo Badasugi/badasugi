@@ -1,3 +1,7 @@
+# Badasugi (받아쓰기) - Korean speech-to-text application
+# Website: https://www.badasugi.com
+# GitHub: https://github.com/Badasugi/badasugi
+
 # Define a directory for dependencies in the user's home folder
 DEPS_DIR := $(HOME)/Badasugi-Dependencies
 WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
@@ -39,6 +43,8 @@ whisper:
 setup: whisper
 	@echo "Whisper framework is ready at $(FRAMEWORK_PATH)"
 	@echo "Please ensure your Xcode project references the framework from this new location."
+	@echo ""
+	@echo "Badasugi (받아쓰기) - https://www.badasugi.com"
 
 build: setup
 	xcodebuild -project Badasugi.xcodeproj -scheme Badasugi -configuration Debug CODE_SIGN_IDENTITY="" build
@@ -63,6 +69,10 @@ clean:
 
 # Help
 help:
+	@echo "Badasugi (받아쓰기) - Korean speech-to-text application"
+	@echo "Website: https://www.badasugi.com"
+	@echo "GitHub: https://github.com/Badasugi/badasugi"
+	@echo ""
 	@echo "Available targets:"
 	@echo "  check/healthcheck  Check if required CLI tools are installed"
 	@echo "  whisper            Clone and build whisper.cpp XCFramework"
@@ -73,3 +83,4 @@ help:
 	@echo "  all                Run full build process (default)"
 	@echo "  clean              Remove build artifacts"
 	@echo "  help               Show this help message"
+

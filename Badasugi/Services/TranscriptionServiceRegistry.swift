@@ -6,7 +6,7 @@ import os
 class TranscriptionServiceRegistry {
     private let whisperState: WhisperState
     private let modelsDirectory: URL
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "TranscriptionServiceRegistry")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "TranscriptionServiceRegistry")
 
     private(set) lazy var localTranscriptionService = LocalTranscriptionService(
         modelsDirectory: modelsDirectory,

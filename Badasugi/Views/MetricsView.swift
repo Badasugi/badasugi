@@ -347,7 +347,10 @@ struct MetricsView: View {
     private var todaySessionCount: Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        return transcriptions.filter { calendar.isDate($0.timestamp, inSameDayAs: today) }.count
+        return transcriptions.filter { transcription in
+            let transcriptionDay = calendar.startOfDay(for: transcription.timestamp)
+            return transcriptionDay == today
+        }.count
     }
     
     private var keystrokesSavedText: String {

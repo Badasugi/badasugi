@@ -6,7 +6,7 @@ import os
 @MainActor
 class Recorder: NSObject, ObservableObject {
     private var recorder: AudioEngineRecorder?
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "Recorder")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "Recorder")
     private let deviceManager = AudioDeviceManager.shared
     private var deviceObserver: NSObjectProtocol?
     private var isReconfiguring = false
@@ -72,12 +72,24 @@ class Recorder: NSObject, ObservableObject {
         
         hasDetectedAudioInCurrentSession = false
 
+        // Cancel any pending audio restoration before starting new recording
+        audioRestorationTask?.cancel()
+        audioRestorationTask = nil
+
         let deviceID = deviceManager.getCurrentDevice()
         do {
             try await configureAudioSession(with: deviceID)
         } catch {
             logger.warning("⚠️ Failed to configure audio session for device \(deviceID), attempting to continue: \(error.localizedDescription)")
         }
+
+        // IMPORTANT: Pause media and mute BEFORE starting audio engine
+        // to prevent audio subsystem conflicts that can cause kernel panic
+        await playbackController.pauseMedia()
+        _ = await mediaController.muteSystemAudio()
+        
+        // Small delay to let audio system settle after muting
+        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
 
         do {
             let engineRecorder = AudioEngineRecorder()
@@ -93,15 +105,6 @@ class Recorder: NSObject, ObservableObject {
             try engineRecorder.startRecording(toOutputFile: url)
 
             logger.info("✅ AudioEngineRecorder started successfully")
-
-            audioRestorationTask?.cancel()
-            audioRestorationTask = nil
-
-            Task { [weak self] in
-                guard let self = self else { return }
-                await self.playbackController.pauseMedia()
-                _ = await self.mediaController.muteSystemAudio()
-            }
 
             audioLevelCheckTask?.cancel()
             audioMeterUpdateTask?.cancel()
@@ -136,6 +139,9 @@ class Recorder: NSObject, ObservableObject {
 
         } catch {
             logger.error("Failed to create audio recorder: \(error.localizedDescription)")
+            // Restore audio on failure
+            await mediaController.unmuteSystemAudio()
+            await playbackController.resumeMedia()
             stopRecording()
             throw RecorderError.couldNotStartRecording
         }

@@ -16,7 +16,7 @@
                 </ul>
 
             ]]></description>
-            <enclosure url="https://github.com/Beingpax/Badasugi/releases/download/v1.64/Badasugi.dmg" length="24629784" type="application/octet-stream" sparkle:edSignature="wOstprSNj4i41nw48VWU+1uxvr7LVvz4mTyMtKz559Q7SAYNt9f74+yAUFsR4owme4xrDiLO7z+j2QMsxrjnBw=="/>
+            <enclosure url="https://github.com/Badasugi/badasugi/releases/download/v1.64/Badasugi.dmg" length="24629784" type="application/octet-stream" sparkle:edSignature="wOstprSNj4i41nw48VWU+1uxvr7LVvz4mTyMtKz559Q7SAYNt9f74+yAUFsR4owme4xrDiLO7z+j2QMsxrjnBw=="/>
         </item>
     </channel>
 </rss>

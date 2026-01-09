@@ -4,7 +4,7 @@ import os
 class CustomModelManager: ObservableObject {
     static let shared = CustomModelManager()
     
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "CustomModelManager")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "CustomModelManager")
     private let userDefaults = UserDefaults.standard
     private let customModelsKey = "customCloudModels"
     

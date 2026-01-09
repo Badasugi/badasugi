@@ -28,9 +28,42 @@ extension WhisperState {
     
     // MARK: - Mini Recorder Management
     
-    func toggleMiniRecorder(powerModeId: UUID? = nil) async {
-        // GUARD: Prevent rapid successive calls
-        if let lastTime = lastToggleMiniRecorderTime,
+    func toggleMiniRecorder(powerModeId: UUID? = nil, bypassCooldown: Bool = false) async {
+        // GUARD: Check license/trial status first
+        if licenseViewModel.isLocked {
+            logger.warning("⚠️ Trial expired - recording blocked")
+            await MainActor.run {
+                showTrialExpiredAlert()
+            }
+            return
+        }
+        
+        // GUARD: Check if enhancementService is available (required for recorder UI)
+        guard enhancementService != nil else {
+            logger.warning("⚠️ enhancementService is nil - cannot start recording")
+            return
+        }
+        
+        // GUARD: Check if a transcription model is selected
+        guard currentTranscriptionModel != nil else {
+            logger.warning("⚠️ No transcription model selected - cannot start recording")
+            await MainActor.run {
+                NotificationManager.shared.showNotification(
+                    title: "AI 모델이 선택되지 않았습니다",
+                    type: .error
+                )
+            }
+            return
+        }
+        
+        // Determine whether this invocation is intended to STOP an ongoing recording.
+        // Push-to-Talk triggers start on keyDown and stop on keyUp, which can happen faster than the
+        // default cooldown; stopping should remain responsive.
+        let isStopAction = isMiniRecorderVisible && recordingState == .recording
+
+        // GUARD: Prevent rapid successive calls (but never block a stop action, and allow explicit bypass)
+        if !bypassCooldown && !isStopAction,
+           let lastTime = lastToggleMiniRecorderTime,
            Date().timeIntervalSince(lastTime) < toggleMiniRecorderCooldown {
             logger.warning("⚠️ toggleMiniRecorder called too quickly, ignoring (cooldown)")
             return
@@ -53,13 +86,39 @@ extension WhisperState {
                 await cancelRecording()
             }
         } else {
+            // Play start sound first
             SoundManager.shared.playStartSound()
+            
+            // Wait for sound to start playing before initializing audio engine
+            // This prevents audio subsystem conflicts that can cause kernel panic
+            try? await Task.sleep(nanoseconds: 150_000_000) // 150ms delay
 
             await MainActor.run {
                 isMiniRecorderVisible = true // This will call showRecorderPanel() via didSet
             }
 
             await toggleRecord(powerModeId: powerModeId)
+        }
+    }
+    
+    private func showTrialExpiredAlert() {
+        let alert = NSAlert()
+        alert.messageText = "체험 기간이 만료되었습니다"
+        alert.informativeText = "받아쓰기의 모든 기능을 계속 사용하려면 라이선스를 구매하거나 활성화해주세요."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "설정 열기")
+        alert.addButton(withTitle: "나중에")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Navigate to settings/plan tab
+            NotificationCenter.default.post(
+                name: .navigateToDestination,
+                object: nil,
+                userInfo: ["destination": "플랜"]
+            )
+            // Activate the app window
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
     

@@ -7,17 +7,30 @@ struct MiniRecorderView: View {
     
     private var backgroundView: some View {
         ZStack {
-            Color.black.opacity(0.9)
+            // 바다 컨셉 그레디언트 - 물결 같은 색상 변화
             LinearGradient(
                 colors: [
-                    Color.black.opacity(0.95),
-                    Color(red: 0.15, green: 0.15, blue: 0.15).opacity(0.9)
+                    Color(red: 0.05, green: 0.1, blue: 0.2).opacity(0.95), // 어두운 바다색
+                    Color(red: 0.1, green: 0.2, blue: 0.3).opacity(0.9),   // 중간톤 바다색
+                    Color(red: 0.15, green: 0.25, blue: 0.4).opacity(0.85)  // 밝은 바다색
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
+
+            // 물결 효과를 위한 추가 그레디언트
+            RadialGradient(
+                colors: [
+                    Color.blue.opacity(0.1),
+                    Color.clear
+                ],
+                center: .center,
+                startRadius: 20,
+                endRadius: 80
+            )
+
             VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
-                .opacity(0.05)
+                .opacity(0.08)
         }
         .clipShape(Capsule())
     }
@@ -38,6 +51,7 @@ struct MiniRecorderView: View {
                 .frame(width: 24, height: 24)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .padding(.leading, 12)
+                .shadow(color: Color.blue.opacity(0.5), radius: 4, x: 0, y: 0)
 
             Spacer()
 
@@ -52,7 +66,8 @@ struct MiniRecorderView: View {
                 .frame(width: 18)
                 .padding(.trailing, 12)
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 4)
     }
     
     private var recorderCapsule: some View {
@@ -61,11 +76,24 @@ struct MiniRecorderView: View {
             .background(backgroundView)
             .overlay {
                 Capsule()
-                    .strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.4),
+                                Color.blue.opacity(0.3),
+                                Color.cyan.opacity(0.2)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        lineWidth: 0.8
+                    )
             }
             .overlay {
                 contentLayout
             }
+            .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
+            .shadow(color: Color.cyan.opacity(0.1), radius: 16, x: 0, y: 8)
     }
     
     var body: some View {

@@ -15,7 +15,7 @@ struct EnhancementShortcutsView: View {
                     InfoTip(
                         title: "텍스트 다듬기 토글",
                         message: "녹음 중에 텍스트 다듬기를 빠르게 켜거나 끕니다. 받아쓰기가 실행 중이고 녹음기가 표시되어 있을 때만 사용할 수 있습니다.",
-                        learnMoreURL: "https://tryvoiceink.com/docs/enhancement-shortcuts"
+                        learnMoreURL: "https://www.badasugi.com"
                     )
                 }
 
@@ -42,7 +42,7 @@ struct EnhancementShortcutsView: View {
                     InfoTip(
                         title: "다듬기 스타일 전환",
                         message: "저장된 순서대로 ⌘1부터 ⌘0까지 사용하여 저장된 스타일 간에 전환합니다. 받아쓰기가 실행 중이고 녹음기가 표시되어 있을 때만 사용할 수 있습니다.",
-                        learnMoreURL: "https://tryvoiceink.com/docs/enhancement-shortcuts"
+                        learnMoreURL: "https://www.badasugi.com"
                     )
                 }
 

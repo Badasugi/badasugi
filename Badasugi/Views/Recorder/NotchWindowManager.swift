@@ -72,12 +72,18 @@ class NotchWindowManager: ObservableObject {
     private func initializeWindow(screen: NSScreen) {
         deinitializeWindow()
         
+        // Safety check: enhancementService must be available
+        guard let enhancementService = whisperState.enhancementService else {
+            print("⚠️ NotchWindowManager: enhancementService is nil, cannot show recorder")
+            return
+        }
+        
         let metrics = NotchRecorderPanel.calculateWindowMetrics()
         let panel = NotchRecorderPanel(contentRect: metrics.frame)
         
         let notchRecorderView = NotchRecorderView(whisperState: whisperState, recorder: recorder)
             .environmentObject(self)
-            .environmentObject(whisperState.enhancementService!)
+            .environmentObject(enhancementService)
         
         let hostingController = NotchRecorderHostingController(rootView: notchRecorderView)
         panel.contentView = hostingController.view

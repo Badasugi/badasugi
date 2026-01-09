@@ -3,39 +3,6 @@ import SwiftData
 import AppKit
 import UniformTypeIdentifiers
 
-// 3-mode recognition mode for simplified UI
-enum RecognitionMode: String, CaseIterable, Identifiable {
-    case standard = "기본"
-    case highAccuracy = "고정확"
-    case offline = "오프라인"
-    
-    var id: String { rawValue }
-    
-    var description: String {
-        switch self {
-        case .standard: return "빠르고 정확한 인식"
-        case .highAccuracy: return "최고 정확도, 더 느림"
-        case .offline: return "인터넷 없이 사용"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .standard: return "bolt.fill"
-        case .highAccuracy: return "target"
-        case .offline: return "wifi.slash"
-        }
-    }
-}
-
-enum ModelFilter: String, CaseIterable, Identifiable {
-    case recommended = "추천"
-    case local = "로컬"
-    case cloud = "클라우드"
-    case custom = "사용자 지정"
-    var id: String { self.rawValue }
-}
-
 struct ModelManagementView: View {
     @ObservedObject var whisperState: WhisperState
     @State private var customModelToEdit: CustomCloudModel?
@@ -46,16 +13,24 @@ struct ModelManagementView: View {
     @StateObject private var whisperPrompt = WhisperPrompt()
     @ObservedObject private var warmupCoordinator = WhisperModelWarmupCoordinator.shared
 
-    @State private var selectedFilter: ModelFilter = .recommended
     @State private var isShowingSettings = false
     @State private var isAdvancedExpanded = false
-    @State private var selectedRecognitionMode: RecognitionMode = .standard
     
     // State for the unified alert
     @State private var isShowingDeleteAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var deleteActionClosure: () -> Void = {}
+    
+    // Groq API key (saved locally)
+    @AppStorage("GROQAPIKey") private var groqAPIKey: String = ""
+    @State private var groqAPIKeyDraft: String = ""
+    @State private var groqSaveMessage: String? = nil
+    @State private var isShowingGroqKeyGuide: Bool = false
+    
+    private var hasGroqAPIKey: Bool {
+        !groqAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         ScrollView {
@@ -65,13 +40,13 @@ struct ModelManagementView: View {
                     Text("음성 인식")
                         .font(.title2)
                         .fontWeight(.bold)
-                    Text("음성을 텍스트로 변환하는 방식을 선택하세요")
+                    Text("음성을 텍스트로 변환할 모델을 선택하세요")
                         .font(.body)
                         .foregroundColor(.secondary)
                 }
                 
-                // Primary: 3-mode selection
-                recognitionModeSection
+                // 간소화된 모델 선택 섹션
+                modelSelectionSection
                 
                 // Language selection (simple)
                 languageSelectionSection
@@ -92,31 +67,67 @@ struct ModelManagementView: View {
             )
         }
         .onAppear {
-            // Set initial mode based on current model
-            updateRecognitionModeFromCurrentModel()
+            groqAPIKeyDraft = groqAPIKey
         }
     }
     
-    private var recognitionModeSection: some View {
+    // MARK: - Remove Groq API Key
+    private func removeGroqAPIKey() {
+        groqAPIKey = ""
+        groqAPIKeyDraft = ""
+        groqSaveMessage = nil
+        
+        // 현재 선택된 모델이 Groq이면 선택 해제
+        if whisperState.currentTranscriptionModel?.provider == .groq {
+            whisperState.currentTranscriptionModel = nil
+            UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
+        }
+    }
+    
+    private func saveGroqAPIKey() {
+        let trimmed = groqAPIKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        groqAPIKey = trimmed
+        groqSaveMessage = trimmed.isEmpty ? "API 키가 비어있어 저장되지 않았습니다." : "Groq API 키가 저장되었습니다."
+        
+        // If user just added a key and no model is selected, pick a smart default (Groq first).
+        if !trimmed.isEmpty, whisperState.currentTranscriptionModel == nil {
+            whisperState.loadCurrentTranscriptionModel()
+        }
+    }
+    
+    // MARK: - Model Selection Section (간소화됨)
+    private var modelSelectionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("인식 방식")
+            Text("모델 선택")
                 .font(.headline)
                 .foregroundColor(.secondary)
             
             VStack(spacing: 0) {
-                ForEach(Array(RecognitionMode.allCases.enumerated()), id: \.element.id) { index, mode in
-                    RecognitionModeListRow(
-                        mode: mode,
-                        isSelected: selectedRecognitionMode == mode,
-                        action: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedRecognitionMode = mode
-                                applyRecognitionMode(mode)
+                ForEach(Array(availableModels.enumerated()), id: \.element.id) { index, model in
+                    SimpleModelRow(
+                        model: model,
+                        isSelected: whisperState.currentTranscriptionModel?.name == model.name,
+                        isDownloaded: isModelDownloaded(model),
+                        isDownloading: whisperState.downloadProgress[model.name] != nil,
+                        downloadProgress: whisperState.downloadProgress[model.name] ?? 0,
+                        hasGroqAPIKey: hasGroqAPIKey,
+                        isWarming: (model as? LocalModel).map { warmupCoordinator.isWarming(modelNamed: $0.name) } ?? false,
+                        selectAction: {
+                            Task {
+                                await whisperState.setDefaultTranscriptionModel(model)
                             }
-                        }
+                        },
+                        downloadAction: {
+                            if let localModel = model as? LocalModel {
+                                Task { await whisperState.downloadModel(localModel) }
+                            }
+                        },
+                        removeAPIKeyAction: model.provider == .groq ? {
+                            removeGroqAPIKey()
+                        } : nil
                     )
                     
-                    if index < RecognitionMode.allCases.count - 1 {
+                    if index < availableModels.count - 1 {
                         Divider()
                             .padding(.leading, 52)
                     }
@@ -124,7 +135,168 @@ struct ModelManagementView: View {
             }
             .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
             .cornerRadius(10)
+            
+            groqAPIKeyInlineSection
         }
+    }
+    
+    private var groqAPIKeyInlineSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "key.fill")
+                    .foregroundColor(.blue)
+                Text("Whisper Large v3 Turbo (Groq) API 키")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                Spacer()
+                
+                if !hasGroqAPIKey {
+                    Button("API 키 가져오기") {
+                        if let url = URL(string: "https://console.groq.com/keys") {
+                            NSWorkspace.shared.open(url)
+                        }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isShowingGroqKeyGuide = true
+                        }
+                    }
+                    .font(.caption)
+                }
+            }
+            
+            HStack(spacing: 6) {
+                groqInfoPill("무료")
+                groqInfoPill("로컬 저장")
+                groqInfoPill("외부 전송 없음")
+                    .help("Badasugi 서버로 전송하지 않습니다. (Groq 인증에만 사용)")
+            }
+            
+            if !hasGroqAPIKey {
+                if isShowingGroqKeyGuide {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("발급 방법 (2–3분)")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        Text("1) Groq 로그인/가입")
+                        Text("2) Console → API Keys → Create")
+                        Text("3) 키 복사 → 여기 붙여넣고 저장")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .transition(.opacity)
+                } else {
+                    Text("버튼을 누르면 Groq 콘솔이 열립니다. 2–3분이면 끝!")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack(spacing: 8) {
+                    SecureField("Groq API 키 입력", text: $groqAPIKeyDraft)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { saveGroqAPIKey() }
+                    
+                    Button("저장") {
+                        saveGroqAPIKey()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(groqAPIKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                
+                Text("키는 이 Mac에만 저장되며, Badasugi 서버로 전송되지 않습니다.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                
+                if let message = groqSaveMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                } else {
+                    Text("Groq API 키를 등록하면 최고 정확도의 클라우드 모델을 무료로 사용할 수 있습니다.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                // API 키가 저장되어 있을 때는 간단한 상태 표시와 삭제 버튼만
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    
+                    Text("API 키가 등록되었습니다")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Button("Groq 모델 사용") {
+                        if let groqModel = whisperState.allAvailableModels.first(where: { $0.name == "whisper-large-v3-turbo" }) {
+                            Task { await whisperState.setDefaultTranscriptionModel(groqModel) }
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Button {
+                        removeGroqAPIKey()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "trash")
+                            Text("제거")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .help("API 키 제거")
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .padding(12)
+        .background(Color.blue.opacity(0.08))
+        .cornerRadius(8)
+        .onAppear {
+            // Keep draft in sync if coming back to this screen.
+            groqAPIKeyDraft = groqAPIKey
+        }
+        .onChange(of: groqAPIKey) { _, newValue in
+            // Sync draft if key was changed elsewhere.
+            if newValue != groqAPIKeyDraft {
+                groqAPIKeyDraft = newValue
+            }
+        }
+    }
+
+    private func groqInfoPill(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .fontWeight(.semibold)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundColor(Color.blue)
+            .background(
+                Capsule()
+                    .fill(Color.blue.opacity(0.14))
+            )
+    }
+    
+    // 표시할 모델 목록 (4개 고정)
+    private var availableModels: [any TranscriptionModel] {
+        // 기본 4개 모델만 표시
+        let modelNames = ["whisper-large-v3-turbo", "ggml-large-v3-turbo", "ggml-large-v3-turbo-q5_0", "apple-speech"]
+        return whisperState.allAvailableModels.filter { modelNames.contains($0.name) }
+            .sorted { model1, model2 in
+                let order = modelNames
+                let index1 = order.firstIndex(of: model1.name) ?? Int.max
+                let index2 = order.firstIndex(of: model2.name) ?? Int.max
+                return index1 < index2
+            }
+    }
+    
+    private func isModelDownloaded(_ model: any TranscriptionModel) -> Bool {
+        // 클라우드 모델과 네이티브 모델은 항상 사용 가능
+        if model.provider == .groq || model.provider == .nativeApple {
+            return true
+        }
+        // 로컬 모델은 다운로드 여부 확인
+        return whisperState.availableModels.contains { $0.name == model.name }
     }
     
     private var languageSelectionSection: some View {
@@ -148,8 +320,76 @@ struct ModelManagementView: View {
                 
                 Divider()
                 
-                // Model management section
-                availableModelsSection
+                // Model settings
+                ModelSettingsView(whisperPrompt: whisperPrompt)
+                
+                Divider()
+                
+                // Import local model button
+                HStack(spacing: 8) {
+                    Button(action: { presentImportPanel() }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "square.and.arrow.down")
+                            Text("커스텀 로컬 모델 가져오기…")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(CardBackground(isSelected: false))
+                        .cornerRadius(10)
+                    }
+                    .buttonStyle(.plain)
+
+                    InfoTip(
+                        title: "커스텀 Whisper 모델 가져오기",
+                        message: "직접 파인튜닝한 Whisper 모델을 추가할 수 있습니다. .bin 파일을 선택하세요.",
+                        learnMoreURL: "https://www.badasugi.com"
+                    )
+                    .help("커스텀 로컬 모델에 대해 자세히 알아보기")
+                }
+                
+                // 사용자 지정 모델 섹션 (있는 경우에만 표시)
+                if !customModelManager.customModels.isEmpty {
+                    Divider()
+                    
+                    Text("사용자 지정 모델")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    ForEach(customModelManager.customModels, id: \.id) { customModel in
+                        CustomModelCardRowView(
+                            model: customModel,
+                            whisperState: whisperState,
+                            isCurrent: whisperState.currentTranscriptionModel?.name == customModel.name,
+                            onDelete: {
+                                alertTitle = "사용자 지정 모델 삭제"
+                                alertMessage = "'\(customModel.displayName)'을(를) 삭제하시겠습니까?"
+                                deleteActionClosure = {
+                                    customModelManager.removeCustomModel(withId: customModel.id)
+                                    whisperState.refreshAllAvailableModels()
+                                }
+                                isShowingDeleteAlert = true
+                            },
+                            onEdit: { model in
+                                customModelToEdit = model
+                            },
+                            onSelect: {
+                                Task {
+                                    await whisperState.setDefaultTranscriptionModel(customModel)
+                                }
+                            }
+                        )
+                    }
+                }
+                
+                // Add Custom Model Card
+                AddCustomModelCardView(
+                    customModelManager: customModelManager,
+                    editingModel: customModelToEdit
+                ) {
+                    whisperState.refreshAllAvailableModels()
+                    customModelToEdit = nil
+                }
             }
             .padding(.top, 12)
         } label: {
@@ -166,215 +406,6 @@ struct ModelManagementView: View {
         .padding()
         .background(CardBackground(isSelected: false))
         .cornerRadius(10)
-    }
-    
-    private var availableModelsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                // Modern compact pill switcher
-                HStack(spacing: 12) {
-                    ForEach(ModelFilter.allCases, id: \.self) { filter in
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                selectedFilter = filter
-                                isShowingSettings = false
-                            }
-                        }) {
-                            Text(filter.rawValue)
-                                .font(.system(size: 14, weight: selectedFilter == filter ? .semibold : .medium))
-                                .foregroundColor(selectedFilter == filter ? .primary : .primary.opacity(0.7))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(
-                                    CardBackground(isSelected: selectedFilter == filter, cornerRadius: 22)
-                                )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isShowingSettings.toggle()
-                    }
-                }) {
-                    Image(systemName: "gear")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(isShowingSettings ? .accentColor : .primary.opacity(0.7))
-                        .padding(12)
-                        .background(
-                            CardBackground(isSelected: isShowingSettings, cornerRadius: 22)
-                        )
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.bottom, 12)
-            
-            if isShowingSettings {
-                ModelSettingsView(whisperPrompt: whisperPrompt)
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(filteredModels, id: \.id) { model in
-                        let isWarming = (model as? LocalModel).map { localModel in
-                            warmupCoordinator.isWarming(modelNamed: localModel.name)
-                        } ?? false
-
-                        ModelCardRowView(
-                            model: model,
-                            whisperState: whisperState, 
-                            isDownloaded: whisperState.availableModels.contains { $0.name == model.name },
-                            isCurrent: whisperState.currentTranscriptionModel?.name == model.name,
-                            downloadProgress: whisperState.downloadProgress,
-                            modelURL: whisperState.availableModels.first { $0.name == model.name }?.url,
-                            isWarming: isWarming,
-                            deleteAction: {
-                                if let customModel = model as? CustomCloudModel {
-                                    alertTitle = "사용자 지정 모델 삭제"
-                                    alertMessage = "사용자 지정 모델 '\(customModel.displayName)'을(를) 삭제하시겠습니까?"
-                                    deleteActionClosure = {
-                                        customModelManager.removeCustomModel(withId: customModel.id)
-                                        whisperState.refreshAllAvailableModels()
-                                    }
-                                    isShowingDeleteAlert = true
-                                } else if let downloadedModel = whisperState.availableModels.first(where: { $0.name == model.name }) {
-                                    alertTitle = "모델 삭제"
-                                    alertMessage = "모델 '\(downloadedModel.name)'을(를) 삭제하시겠습니까?"
-                                    deleteActionClosure = {
-                                        Task {
-                                            await whisperState.deleteModel(downloadedModel)
-                                        }
-                                    }
-                                    isShowingDeleteAlert = true
-                                }
-                            },
-                            setDefaultAction: {
-                                Task {
-                                    await whisperState.setDefaultTranscriptionModel(model)
-                                }
-                            },
-                            downloadAction: {
-                                if let localModel = model as? LocalModel {
-                                    Task { await whisperState.downloadModel(localModel) }
-                                }
-                            },
-                            editAction: model.provider == .custom ? { customModel in
-                                customModelToEdit = customModel
-                            } : nil
-                        )
-                    }
-                    
-                    // Import button as a card at the end of the Local list
-                    if selectedFilter == .local {
-                        HStack(spacing: 8) {
-                            Button(action: { presentImportPanel() }) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "square.and.arrow.down")
-                                    Text("로컬 모델 가져오기…")
-                                        .font(.system(size: 12, weight: .semibold))
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(16)
-                                .background(CardBackground(isSelected: false))
-                                .cornerRadius(10)
-                            }
-                            .buttonStyle(.plain)
-
-                            InfoTip(
-                                title: "로컬 Whisper 모델 가져오기",
-                                message: "받아쓰기에서 사용할 사용자 지정 파인튜닝 Whisper 모델을 추가합니다. 다운로드한 .bin 파일을 선택하세요.",
-                                learnMoreURL: "https://tryvoiceink.com/docs/custom-local-whisper-models"
-                            )
-                            .help("사용자 지정 로컬 모델에 대해 자세히 알아보기")
-                        }
-                    }
-                    
-                    if selectedFilter == .custom {
-                        // Add Custom Model Card at the bottom
-                        AddCustomModelCardView(
-                            customModelManager: customModelManager,
-                            editingModel: customModelToEdit
-                        ) {
-                            // Refresh the models when a new custom model is added
-                            whisperState.refreshAllAvailableModels()
-                            customModelToEdit = nil // Clear editing state
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var filteredModels: [any TranscriptionModel] {
-        switch selectedFilter {
-        case .recommended:
-            return whisperState.allAvailableModels.filter {
-                let recommendedNames = ["ggml-base.en", "ggml-large-v3-turbo-q5_0", "ggml-large-v3-turbo", "whisper-large-v3-turbo"]
-                return recommendedNames.contains($0.name)
-            }.sorted { model1, model2 in
-                let recommendedOrder = ["ggml-base.en", "ggml-large-v3-turbo-q5_0", "ggml-large-v3-turbo", "whisper-large-v3-turbo"]
-                let index1 = recommendedOrder.firstIndex(of: model1.name) ?? Int.max
-                let index2 = recommendedOrder.firstIndex(of: model2.name) ?? Int.max
-                return index1 < index2
-            }
-        case .local:
-            return whisperState.allAvailableModels.filter { $0.provider == .local || $0.provider == .nativeApple || $0.provider == .parakeet }
-        case .cloud:
-            let cloudProviders: [ModelProvider] = [.groq, .elevenLabs, .deepgram, .mistral, .gemini, .soniox]
-            return whisperState.allAvailableModels.filter { cloudProviders.contains($0.provider) }
-        case .custom:
-            return whisperState.allAvailableModels.filter { $0.provider == .custom }
-        }
-    }
-    
-    // MARK: - Recognition Mode Logic
-    private func updateRecognitionModeFromCurrentModel() {
-        guard let currentModel = whisperState.currentTranscriptionModel else { return }
-        
-        // Determine mode based on current model characteristics
-        let cloudProviders: [ModelProvider] = [.groq, .elevenLabs, .deepgram, .mistral, .gemini, .soniox]
-        
-        if cloudProviders.contains(currentModel.provider) {
-            // Cloud models = standard (fast)
-            selectedRecognitionMode = .standard
-        } else if currentModel.name.contains("large") && !currentModel.name.contains("turbo") {
-            // Large non-turbo = high accuracy
-            selectedRecognitionMode = .highAccuracy
-        } else if currentModel.provider == .local || currentModel.provider == .nativeApple || currentModel.provider == .parakeet {
-            // Local models = offline
-            selectedRecognitionMode = .offline
-        } else {
-            selectedRecognitionMode = .standard
-        }
-    }
-    
-    private func applyRecognitionMode(_ mode: RecognitionMode) {
-        // Find appropriate model for the selected mode
-        let targetModel: (any TranscriptionModel)?
-        
-        switch mode {
-        case .standard:
-            // Prefer cloud turbo model or fast local
-            targetModel = whisperState.allAvailableModels.first { $0.name == "whisper-large-v3-turbo" }
-                ?? whisperState.allAvailableModels.first { $0.name == "ggml-large-v3-turbo-q5_0" }
-        case .highAccuracy:
-            // Prefer large model without turbo
-            targetModel = whisperState.allAvailableModels.first { $0.name == "ggml-large-v3-turbo" }
-                ?? whisperState.allAvailableModels.first { $0.name.contains("large") }
-        case .offline:
-            // Prefer downloaded local models only (exclude nativeApple which requires macOS 26+)
-            targetModel = whisperState.allAvailableModels.first { model in
-                (model.provider == .local || model.provider == .parakeet) &&
-                whisperState.availableModels.contains { downloaded in downloaded.name == model.name }
-            } ?? whisperState.allAvailableModels.first { $0.name == "ggml-large-v3-turbo-q5_0" }
-        }
-        
-        if let model = targetModel {
-            Task {
-                await whisperState.setDefaultTranscriptionModel(model)
-            }
-        }
     }
 
     // MARK: - Import Panel
@@ -393,18 +424,84 @@ struct ModelManagementView: View {
     }
 }
 
-// MARK: - Recognition Mode List Row
-private struct RecognitionModeListRow: View {
-    let mode: RecognitionMode
+// MARK: - Simple Model Row (간소화된 모델 행)
+private struct SimpleModelRow: View {
+    let model: any TranscriptionModel
     let isSelected: Bool
-    let action: () -> Void
+    let isDownloaded: Bool
+    let isDownloading: Bool
+    let downloadProgress: Double
+    let hasGroqAPIKey: Bool
+    let isWarming: Bool
+    let selectAction: () -> Void
+    let downloadAction: () -> Void
+    var removeAPIKeyAction: (() -> Void)? = nil
+    
     @State private var isHovering = false
     
+    private var isAvailable: Bool {
+        // Groq 모델은 API 키가 있어야 사용 가능
+        if model.provider == .groq {
+            return hasGroqAPIKey
+        }
+        // 로컬 모델은 다운로드가 되어 있어야 사용 가능
+        if model.provider == .local {
+            return isDownloaded
+        }
+        // Apple Speech는 항상 사용 가능
+        return true
+    }
+    
+    private var modelIcon: String {
+        switch model.provider {
+        case .groq:
+            return "cloud.fill"
+        case .local:
+            return "desktopcomputer"
+        case .nativeApple:
+            return "apple.logo"
+        default:
+            return "questionmark.circle"
+        }
+    }
+    
+    private var statusText: String {
+        if model.provider == .groq && !hasGroqAPIKey {
+            return "API 키 필요"
+        }
+        if model.provider == .local && !isDownloaded {
+            return "다운로드 필요"
+        }
+        if isWarming {
+            return "준비 중..."
+        }
+        return ""
+    }
+    
+    private var recommendationBadge: String? {
+        if model.name == "whisper-large-v3-turbo" {
+            return "추천"
+        }
+        if model.name == "ggml-large-v3-turbo" {
+            return "오프라인"
+        }
+        if model.name == "ggml-large-v3-turbo-q5_0" {
+            return "경량"
+        }
+        return nil
+    }
+    
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            if isAvailable && !isDownloading {
+                selectAction()
+            } else if model.provider == .local && !isDownloaded && !isDownloading {
+                downloadAction()
+            }
+        }) {
             HStack(spacing: 12) {
                 // Icon
-                Image(systemName: mode.icon)
+                Image(systemName: modelIcon)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(isSelected ? .accentColor : .secondary)
                     .frame(width: 28, height: 28)
@@ -415,31 +512,80 @@ private struct RecognitionModeListRow: View {
                 
                 // Title and description
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(mode.rawValue)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.primary)
+                    HStack(spacing: 6) {
+                        Text(model.displayName)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        if let badge = recommendationBadge {
+                            Text(badge)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    model.name == "whisper-large-v3-turbo" ? Color.blue :
+                                    model.name == "ggml-large-v3-turbo" ? Color.green :
+                                    Color.orange
+                                )
+                                .cornerRadius(4)
+                        }
+                    }
                     
-                    Text(mode.description)
-                        .font(.system(size: 12))
+                    Text(model.description)
+                        .font(.system(size: 11))
                         .foregroundColor(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
                 
                 Spacer()
                 
-                // Checkmark when selected
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .semibold))
+                // Status / Actions
+                if isDownloading {
+                    ProgressView(value: downloadProgress)
+                        .progressViewStyle(.linear)
+                        .frame(width: 60)
+                } else if !statusText.isEmpty {
+                    if model.provider == .local && !isDownloaded {
+                        Button(action: downloadAction) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.down.circle")
+                                Text("다운로드")
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Text(statusText)
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                    }
+                } else if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.accentColor)
+                }
+                
+                // Groq API 키 제거 버튼 (API 키가 있을 때만 표시)
+                if model.provider == .groq && hasGroqAPIKey, let removeAction = removeAPIKeyAction {
+                    Button(action: removeAction) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("API 키 제거")
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(isHovering ? Color.primary.opacity(0.05) : Color.clear)
+            .background(isHovering && isAvailable ? Color.primary.opacity(0.05) : Color.clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(!isAvailable && model.provider != .local)
+        .opacity(isAvailable || model.provider == .local ? 1.0 : 0.6)
         .onHover { hovering in
             isHovering = hovering
         }

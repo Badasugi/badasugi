@@ -4,8 +4,8 @@ import AppKit
 class WindowManager: NSObject {
     static let shared = WindowManager()
     
-    private static let mainWindowIdentifier = NSUserInterfaceItemIdentifier("com.prakashjoshipax.badasugi.mainWindow")
-    private static let onboardingWindowIdentifier = NSUserInterfaceItemIdentifier("com.prakashjoshipax.badasugi.onboardingWindow")
+    private static let mainWindowIdentifier = NSUserInterfaceItemIdentifier("com.badasugi.app.mainWindow")
+    private static let onboardingWindowIdentifier = NSUserInterfaceItemIdentifier("com.badasugi.app.onboardingWindow")
     private static let mainWindowAutosaveName = NSWindow.FrameAutosaveName("BadasugiMainWindowFrame")
     
     private weak var mainWindow: NSWindow?

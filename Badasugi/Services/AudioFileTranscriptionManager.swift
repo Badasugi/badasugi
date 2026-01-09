@@ -15,7 +15,7 @@ class AudioTranscriptionManager: ObservableObject {
     
     private var currentTask: Task<Void, Error>?
     private let audioProcessor = AudioProcessor()
-    private let logger = Logger(subsystem: "com.prakashjoshipax.badasugi", category: "AudioTranscriptionManager")
+    private let logger = Logger(subsystem: "com.badasugi.app", category: "AudioTranscriptionManager")
     
     enum ProcessingPhase {
         case idle
@@ -86,6 +86,10 @@ class AudioTranscriptionManager: ObservableObject {
                 let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
                 text = TranscriptionOutputFilter.filter(text)
                 text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if UserDefaults.standard.object(forKey: "IsAutoPunctuationEnabled") as? Bool ?? false {
+                    text = AutoPunctuationService.apply(to: text)
+                }
 
                 let powerModeManager = PowerModeManager.shared
                 let activePowerModeConfig = powerModeManager.currentActiveConfiguration
